@@ -1,10 +1,10 @@
 # Gera o site e publica no GitHub Pages a cada atualização da branch main.
+# Em Settings > Pages, a origem (Source) precisa estar em "GitHub Actions".
 name: Publicar site
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', '.github/workflows/publicar-site.yml']
   workflow_dispatch:
 
 permissions:

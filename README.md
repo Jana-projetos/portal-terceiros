@@ -69,4 +69,4 @@ npm run dev                  # abre em http://localhost:5173/portal-terceiros/
 
 ## Publicação
 
-Cada atualização na `main` que mexe em `site/` dispara o workflow **Publicar site**, que gera o site e publica no GitHub Pages. Na primeira vez, em **Settings > Pages**, escolher **Source: GitHub Actions**.
+Cada atualização na `main` dispara o workflow **Publicar site**, que gera o site e publica no GitHub Pages. Na primeira vez, em **Settings > Pages**, escolher **Source: GitHub Actions**.
