@@ -31,7 +31,7 @@ export function App() {
       <Route path="/nova-senha" element={<NovaSenha />} />
       <Route path="/" element={<ComLogin><Inicio /></ComLogin>} />
       <Route path="/analise" element={<SoAdmin><Analise /></SoAdmin>} />
-      <Route path="/colaboradores" element={<SoAdmin><Colaboradores /></SoAdmin>} />
+      <Route path="/colaboradores" element={<SoPerfil perfil={['admin', 'tst']}><Colaboradores /></SoPerfil>} />
       <Route path="/liberacao" element={<SoAdmin><Liberacao /></SoAdmin>} />
       <Route path="/acessos" element={<SoAdmin><Acessos /></SoAdmin>} />
       <Route path="/pendencias" element={<SoPerfil perfil="fornecedor"><OQueFalta /></SoPerfil>} />
@@ -51,11 +51,12 @@ function ComLogin({ children }: { children: ReactNode }) {
 }
 
 // As telas também são protegidas no banco; aqui só evitamos mostrar a tela a quem não é do perfil.
-function SoPerfil({ perfil, children }: { perfil: Perfil; children: ReactNode }) {
+function SoPerfil({ perfil, children }: { perfil: Perfil | Perfil[]; children: ReactNode }) {
   const { usuario } = useSessao();
+  const aceitos = Array.isArray(perfil) ? perfil : [perfil];
   return (
     <ComLogin>
-      {usuario?.perfil === perfil ? children : <Navigate to="/" replace />}
+      {usuario && aceitos.includes(usuario.perfil) ? children : <Navigate to="/" replace />}
     </ComLogin>
   );
 }

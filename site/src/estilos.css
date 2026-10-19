@@ -973,6 +973,10 @@ span.sub {
   margin: 0;
 }
 
+.caixa-texto {
+  margin: 0 0 12px;
+}
+
 /* Telas do fornecedor */
 .bloco-destaque {
   padding: 16px 18px;

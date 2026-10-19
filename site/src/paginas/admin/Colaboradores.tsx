@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useSessao } from '../../lib/sessao';
 import { Pagina, Mensagem } from '../../componentes/Pagina';
 import { Dialogo } from '../../componentes/Dialogo';
 import { Carregando } from '../../componentes/Carregando';
@@ -8,7 +9,8 @@ import {
   cpfValido, data, formatarCpf, hojeIso, ordemSituacao, rotuloSituacao, rotuloStatus, soDigitos,
 } from '../../lib/formato';
 import {
-  aprovarAlocacao, lerAlocacoes, lerColaborador, lerIdsComPendenciaCadastro, lerPendencias, registrarIntegracao, salvarCadastro,
+  aprovarAlocacao, devolverAlocacaoTst, lerAlocacoes, lerColaborador, lerDevolucaoTst, lerIdsComPendenciaCadastro, lerPendencias,
+  registrarIntegracao, salvarCadastro, validarAlocacao,
   type AlocacaoResumo, type Colaborador, type Pendencia,
 } from '../../lib/admin';
 
@@ -39,6 +41,9 @@ function passa(a: AlocacaoResumo, f: Filtro, cadastro: Set<string>): boolean {
 }
 
 export function Colaboradores() {
+  const { usuario } = useSessao();
+  const ehAdmin = usuario?.perfil === 'admin';
+  const filtrosDoPerfil = ehAdmin ? filtros : filtros.filter((f) => f.id !== 'cadastro');
   const [params, setParams] = useSearchParams();
   const [alocacoes, setAlocacoes] = useState<AlocacaoResumo[] | null>(null);
   const [cadastro, setCadastro] = useState<Set<string>>(new Set());
@@ -58,7 +63,7 @@ export function Colaboradores() {
 
   async function carregar() {
     try {
-      const [a, c] = await Promise.all([lerAlocacoes(), lerIdsComPendenciaCadastro()]);
+      const [a, c] = await Promise.all([lerAlocacoes(), ehAdmin ? lerIdsComPendenciaCadastro() : Promise.resolve(new Set<string>())]);
       setAlocacoes(a);
       setCadastro(c);
       return a;
@@ -95,7 +100,12 @@ export function Colaboradores() {
   }, [daObra, filtro, busca, cadastro]);
 
   return (
-    <Pagina titulo="Colaboradores" apoio="Situação de cada colaborador por obra. Clique em um nome para ver as pendências e agir.">
+    <Pagina
+      titulo={!ehAdmin && filtro === 'tst' ? 'Para validar' : 'Colaboradores'}
+      apoio={ehAdmin
+        ? 'Situação de cada colaborador por obra. Clique em um nome para ver as pendências e agir.'
+        : 'Colaboradores das suas obras. Os aprovados pela Emais esperam a sua validação para serem liberados.'}
+    >
       {erro && <Mensagem tipo="erro" aoFechar={() => setErro(null)}>{erro}</Mensagem>}
 
       <div className="filtros">
@@ -115,7 +125,7 @@ export function Colaboradores() {
       </div>
 
       <div className="chips chips-filtro" role="group" aria-label="Situação">
-        {filtros.map((f) => (
+        {filtrosDoPerfil.map((f) => (
           <button
             key={f.id}
             type="button"
@@ -182,6 +192,7 @@ export function Colaboradores() {
       )}
 
       <Detalhe
+        ehAdmin={ehAdmin}
         alocacao={aberta}
         aoFechar={() => setAberta(null)}
         aoMudar={async () => {
@@ -193,7 +204,7 @@ export function Colaboradores() {
   );
 }
 
-function Detalhe({ alocacao, aoFechar, aoMudar }: { alocacao: AlocacaoResumo | null; aoFechar: () => void; aoMudar: () => Promise<void> }) {
+function Detalhe({ ehAdmin, alocacao, aoFechar, aoMudar }: { ehAdmin: boolean; alocacao: AlocacaoResumo | null; aoFechar: () => void; aoMudar: () => Promise<void> }) {
   const [colab, setColab] = useState<Colaborador | null>(null);
   const [pend, setPend] = useState<Pendencia[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -201,6 +212,9 @@ function Detalhe({ alocacao, aoFechar, aoMudar }: { alocacao: AlocacaoResumo | n
   const [ocupado, setOcupado] = useState(false);
   const [editando, setEditando] = useState(false);
   const [dataInt, setDataInt] = useState(hojeIso());
+  const [devolvendo, setDevolvendo] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [devolucaoTst, setDevolucaoTst] = useState<{ motivo: string; em: string } | null>(null);
 
   const id = alocacao?.alocacao_id;
   const colabId = alocacao?.colaborador_id;
@@ -212,14 +226,18 @@ function Detalhe({ alocacao, aoFechar, aoMudar }: { alocacao: AlocacaoResumo | n
     setColab(null);
     setPend(null);
     setDataInt(hojeIso());
+    setDevolvendo(false);
+    setMotivo('');
+    setDevolucaoTst(null);
     if (!id || !colabId) return;
+    if (ehAdmin) lerDevolucaoTst(id).then(setDevolucaoTst).catch(() => undefined);
     Promise.all([lerColaborador(colabId), lerPendencias(id)])
       .then(([c, p]) => {
         setColab(c);
         setPend(p.sort((a, b) => ordemSituacao[a.situacao] - ordemSituacao[b.situacao] || Number(b.impeditivo) - Number(a.impeditivo) || a.documento.localeCompare(b.documento, 'pt-BR')));
       })
       .catch((e) => setErro(mensagemDeErro(e)));
-  }, [id, colabId]);
+  }, [id, colabId, ehAdmin]);
 
   async function agir(acao: () => Promise<void>, sucesso: string) {
     setErro(null);
@@ -254,7 +272,12 @@ function Detalhe({ alocacao, aoFechar, aoMudar }: { alocacao: AlocacaoResumo | n
           <div><dt>Integração</dt><dd>{alocacao.data_integracao ? data(alocacao.data_integracao) : 'Não registrada'}</dd></div>
         </dl>
 
-        {colab?.pendencia_cadastro && (
+        {ehAdmin && alocacao.status === 'em_analise' && devolucaoTst && (
+          <p className="aviso aviso-alerta">
+            <strong>Devolvido pelo TST em {data(devolucaoTst.em)}.</strong> {devolucaoTst.motivo}
+          </p>
+        )}
+        {ehAdmin && colab?.pendencia_cadastro && (
           <p className="aviso aviso-alerta">
             <strong>Cadastro a corrigir.</strong> {colab.pendencia_cadastro}
           </p>
@@ -262,6 +285,48 @@ function Detalhe({ alocacao, aoFechar, aoMudar }: { alocacao: AlocacaoResumo | n
         {erro && <p className="aviso aviso-erro" role="alert">{erro}</p>}
         {ok && <p className="aviso aviso-ok" role="status">{ok}</p>}
 
+        {!ehAdmin && alocacao.status === 'aprovado_admin' && (
+          <div className="caixa">
+            <p className="caixa-texto">
+              A documentação foi conferida e aprovada pelo administrativo da Emais. Confira os dados abaixo e dê a validação final
+              da segurança do trabalho.
+            </p>
+            {!devolvendo ? (
+              <div className="linha-botoes">
+                <button
+                  type="button"
+                  className="botao"
+                  disabled={ocupado}
+                  onClick={() => agir(() => validarAlocacao(alocacao.alocacao_id), `${alocacao.colaborador} liberado para ${alocacao.obra}.`)}
+                >
+                  Validar e liberar
+                </button>
+                <button type="button" className="botao botao-secundario" disabled={ocupado} onClick={() => setDevolvendo(true)}>
+                  Devolver ao administrativo
+                </button>
+              </div>
+            ) : (
+              <form
+                className="formulario formulario-largo"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (motivo.trim()) agir(() => devolverAlocacaoTst(alocacao.alocacao_id, motivo.trim()), 'Devolvido ao administrativo com o motivo informado.');
+                }}
+              >
+                <label className="campo">
+                  <span>O que precisa ser revisto</span>
+                  <textarea rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: NR-35 sem carga horária mínima; função não confere com a atividade na obra" />
+                </label>
+                <div className="linha-botoes">
+                  <button className="botao" type="submit" disabled={!motivo.trim() || ocupado}>Devolver</button>
+                  <button className="botao botao-discreto" type="button" onClick={() => setDevolvendo(false)}>Cancelar</button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+
+        {ehAdmin && (
         <div className="linha-botoes">
           {alocacao.status === 'em_analise' && (
             <button
@@ -295,11 +360,12 @@ function Detalhe({ alocacao, aoFechar, aoMudar }: { alocacao: AlocacaoResumo | n
             <button type="button" className="botao botao-discreto" onClick={() => setEditando(true)}>Corrigir cadastro</button>
           )}
         </div>
-        {alocacao.status === 'em_analise' && travas.length > 0 && (
+        )}
+        {ehAdmin && alocacao.status === 'em_analise' && travas.length > 0 && (
           <p className="dica">Para aprovar, todos os documentos impeditivos precisam estar aprovados e em dia. Faltam {travas.length}.</p>
         )}
 
-        {colab && editando && (
+        {ehAdmin && colab && editando && (
           <EdicaoCadastro
             colaborador={colab}
             aoCancelar={() => setEditando(false)}

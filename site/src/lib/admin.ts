@@ -363,3 +363,39 @@ export function linkOutlook(para: string, assunto: string, corpo: string): strin
 export async function copiarTexto(texto: string) {
   await navigator.clipboard.writeText(texto);
 }
+
+// ---------------------------------------------------------------- Validação do TST
+
+export async function validarAlocacao(id: string) {
+  const { error } = await supabase.rpc('validar_alocacao_tst', { p_alocacao: id });
+  if (error) throw error;
+}
+
+export async function devolverAlocacaoTst(id: string, motivo: string) {
+  const { error } = await supabase.rpc('devolver_alocacao_tst', { p_alocacao: id, p_motivo: motivo });
+  if (error) throw error;
+}
+
+export async function contarAguardandoTst(): Promise<number> {
+  const { count, error } = await supabase
+    .from('alocacoes')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'aprovado_admin');
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// Última devolução do TST para o administrativo (o motivo fica no histórico de eventos).
+export async function lerDevolucaoTst(alocacaoId: string): Promise<{ motivo: string; em: string } | null> {
+  const { data, error } = await supabase
+    .from('eventos')
+    .select('detalhe, criado_em')
+    .eq('tabela', 'alocacoes')
+    .eq('registro_id', alocacaoId)
+    .eq('acao', 'devolvida_tst')
+    .order('criado_em', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  const e = data?.[0];
+  return e ? { motivo: String((e.detalhe as { motivo?: string })?.motivo ?? ''), em: e.criado_em as string } : null;
+}

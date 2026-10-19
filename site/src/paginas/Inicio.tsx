@@ -94,7 +94,7 @@ export function Inicio() {
                 </thead>
                 <tbody>
                   {resumo.map((r) => (
-                    <Linha key={r.obra} r={r} comLink={usuario.perfil === 'admin'} />
+                    <Linha key={r.obra} r={r} comLink={usuario.perfil === 'admin' || usuario.perfil === 'tst'} />
                   ))}
                 </tbody>
                 {resumo.length > 1 && (
