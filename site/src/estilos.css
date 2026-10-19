@@ -1,0 +1,558 @@
+:root {
+  --petroleo: #006666;
+  --petroleo-escuro: #004b4b;
+  --broto: #8ed973;
+  --fundo: #f1f5f4;
+  --superficie: #ffffff;
+  --tinta: #1c3232;
+  --suave: #566b69;
+  --linha: #d2dcda;
+  --ambar: #d99a14;
+  --analise: #8fb0bf;
+  --fornecedor: #c4553f;
+  --erro: #a8321f;
+  --erro-fundo: #fbeae6;
+
+  --fonte: 'Barlow', system-ui, sans-serif;
+  --fonte-titulo: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif;
+  --raio-campo: 6px;
+
+  color-scheme: light;
+  font-family: var(--fonte);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--tinta);
+  background: var(--fundo);
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--fundo);
+}
+
+h1,
+h2 {
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+  letter-spacing: -0.005em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--broto);
+  outline-offset: 2px;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Moldura das telas sem login */
+.moldura {
+  display: grid;
+  grid-template-columns: minmax(320px, 5fr) 7fr;
+  min-height: 100vh;
+}
+
+.moldura-marca {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 48px;
+  padding: 40px 48px 72px;
+  background: var(--petroleo);
+  color: #fff;
+  overflow: hidden;
+}
+
+.marca-topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.marca-texto h1 {
+  font-size: clamp(2.6rem, 5.2vw, 4.4rem);
+  max-width: 9ch;
+}
+
+.marca-texto p {
+  margin: 20px 0 0;
+  max-width: 30ch;
+  font-size: 1.125rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* A faixa de sinalização de obra, única peça de destaque visual do portal */
+.faixa-obra {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22px;
+  background: repeating-linear-gradient(-45deg, var(--broto) 0 16px, var(--petroleo-escuro) 16px 32px);
+}
+
+.moldura-conteudo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.formulario h2 {
+  font-size: 2rem;
+}
+
+.apoio {
+  margin: -8px 0 4px;
+  color: var(--suave);
+  max-width: 60ch;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.campo input {
+  font: inherit;
+  font-weight: 400;
+  padding: 11px 12px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-campo);
+  background: var(--superficie);
+  color: var(--tinta);
+}
+
+.campo input:focus-visible {
+  outline: 2px solid var(--petroleo);
+  outline-offset: 0;
+  border-color: var(--petroleo);
+}
+
+.campo input[aria-invalid='true'] {
+  border-color: var(--erro);
+}
+
+.campo-erro {
+  color: var(--erro);
+  font-weight: 400;
+}
+
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-weight: 600;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: var(--raio-campo);
+  background: var(--petroleo);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.botao:hover {
+  background: var(--petroleo-escuro);
+}
+
+.botao:disabled {
+  background: #9fb4b2;
+  cursor: not-allowed;
+}
+
+.botao-secundario {
+  background: transparent;
+  color: var(--petroleo);
+  border: 1px solid var(--petroleo);
+}
+
+.botao-secundario:hover {
+  background: rgba(0, 102, 102, 0.06);
+}
+
+.botao-discreto {
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--petroleo);
+}
+
+.botao-discreto:hover {
+  background: rgba(0, 102, 102, 0.08);
+}
+
+.link {
+  color: var(--petroleo);
+  font-weight: 500;
+  align-self: flex-start;
+}
+
+.aviso {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--raio-campo);
+}
+
+.aviso-erro {
+  background: var(--erro-fundo);
+  color: var(--erro);
+}
+
+/* Telas com login */
+.topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 32px;
+  background: var(--superficie);
+  border-bottom: 3px solid var(--petroleo);
+}
+
+.topo-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--petroleo);
+}
+
+.topo-usuario {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topo-nome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.topo-nome small {
+  font-weight: 400;
+  color: var(--suave);
+}
+
+.conteudo {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 40px 32px 64px;
+}
+
+.cabecalho {
+  margin-bottom: 28px;
+}
+
+.cabecalho h1 {
+  font-size: clamp(2rem, 3.6vw, 2.75rem);
+  margin-bottom: 14px;
+}
+
+.empresas {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  font-weight: 600;
+}
+
+.cnpj {
+  font-weight: 400;
+  color: var(--suave);
+  margin-left: 6px;
+}
+
+.vazio {
+  padding: 32px;
+  background: var(--superficie);
+  border: 1px dashed var(--linha);
+  border-radius: 8px;
+  color: var(--suave);
+}
+
+.legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  font-size: 0.9rem;
+  color: var(--suave);
+}
+
+.legenda li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legenda i {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.cor-liberado {
+  background: var(--petroleo);
+}
+.cor-pendencia {
+  background: var(--ambar);
+}
+.cor-analise {
+  background: var(--analise);
+}
+.cor-fornecedor {
+  background: var(--fornecedor);
+}
+
+.tabela-rolagem {
+  overflow-x: auto;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabela th,
+.tabela td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--linha);
+  white-space: nowrap;
+}
+
+.tabela thead th {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--suave);
+  vertical-align: bottom;
+  white-space: normal;
+}
+
+.tabela tbody th {
+  font-weight: 600;
+}
+
+.tabela tbody tr:last-child th,
+.tabela tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.tabela tfoot th,
+.tabela tfoot td {
+  font-weight: 700;
+  border-top: 2px solid var(--tinta);
+  border-bottom: 0;
+}
+
+.tabela .num {
+  text-align: right;
+}
+
+.tabela thead .num {
+  max-width: 11ch;
+}
+
+.zero {
+  color: #a3b3b1;
+}
+
+.col-barra {
+  width: 34%;
+  min-width: 160px;
+}
+
+.barra {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--fundo);
+}
+
+.barra span {
+  display: block;
+  height: 100%;
+}
+
+.carregando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 64px 16px;
+  color: var(--suave);
+}
+
+.carregando-barra {
+  width: 120px;
+  height: 6px;
+  border-radius: 3px;
+  background: repeating-linear-gradient(-45deg, var(--broto) 0 8px, var(--petroleo) 8px 16px);
+  background-size: 22.6px 100%;
+  animation: andar 0.9s linear infinite;
+}
+
+@keyframes andar {
+  to {
+    background-position: 22.6px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carregando-barra {
+    animation: none;
+  }
+}
+
+/* Celular */
+@media (max-width: 760px) {
+  .moldura {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .moldura-marca {
+    gap: 28px;
+    padding: 24px 16px 52px;
+  }
+
+  .marca-texto h1 {
+    font-size: 2.4rem;
+    max-width: none;
+  }
+
+  .marca-texto p {
+    margin-top: 10px;
+    font-size: 1rem;
+  }
+
+  .faixa-obra {
+    height: 14px;
+  }
+
+  .moldura-conteudo {
+    padding: 32px 16px 48px;
+  }
+
+  .topo {
+    padding: 10px 16px;
+  }
+
+  .topo-marca span {
+    display: none;
+  }
+
+  .conteudo {
+    padding: 28px 16px 48px;
+  }
+
+  /* No celular cada obra vira um bloco, com os números em duas colunas */
+  .tabela-rolagem {
+    overflow: visible;
+    background: transparent;
+    border: 0;
+  }
+
+  .tabela,
+  .tabela tbody,
+  .tabela tfoot {
+    display: block;
+  }
+
+  .tabela thead {
+    display: none;
+  }
+
+  .tabela tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 16px;
+    margin-bottom: 12px;
+    padding: 14px 16px;
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+    border-radius: 8px;
+  }
+
+  .tabela th,
+  .tabela td,
+  .tabela tfoot th,
+  .tabela tfoot td {
+    padding: 0;
+    border: 0;
+    white-space: normal;
+  }
+
+  .tabela tbody th,
+  .tabela tfoot th {
+    grid-column: 1 / -1;
+    font-size: 1.05rem;
+    margin-bottom: 4px;
+  }
+
+  .tabela .num {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: right;
+  }
+
+  .tabela .num::before {
+    content: attr(data-rotulo);
+    color: var(--suave);
+    font-weight: 400;
+    text-align: left;
+  }
+
+  .tabela .col-barra {
+    grid-column: 1 / -1;
+    width: auto;
+    min-width: 0;
+    margin-top: 6px;
+  }
+
+  .tabela tfoot tr {
+    border: 2px solid var(--tinta);
+  }
+}
