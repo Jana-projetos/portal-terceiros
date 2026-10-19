@@ -34,6 +34,14 @@ export function Topo() {
           </div>
         )}
       </div>
+      {usuario?.perfil === 'fornecedor' && (
+        <nav className="menu" aria-label="Seções do fornecedor">
+          <NavLink to="/" end>Obras</NavLink>
+          <NavLink to="/pendencias">O que falta</NavLink>
+          <NavLink to="/meus-colaboradores">Colaboradores</NavLink>
+          <NavLink to="/documentos-empresa">Documentos da empresa</NavLink>
+        </nav>
+      )}
       {ehAdmin && (
         <nav className="menu" aria-label="Seções do administrativo">
           <NavLink to="/" end>Obras</NavLink>

@@ -11,19 +11,30 @@ type Props = {
 // Janela sobre a tela, com o <dialog> nativo do navegador (Esc fecha, o foco fica dentro).
 export function Dialogo({ aberto, titulo, aoFechar, children, largura = 'normal' }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
+  // Quando quem fecha é o próprio código (aberto virou false), não avisamos aoFechar de novo.
+  const fechandoPorCodigo = useRef(false);
 
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
     if (aberto && !d.open) d.showModal();
-    if (!aberto && d.open) d.close();
+    if (!aberto && d.open) {
+      fechandoPorCodigo.current = true;
+      d.close();
+    }
   }, [aberto]);
 
   return (
     <dialog
       ref={ref}
       className={`dialogo dialogo-${largura}`}
-      onClose={aoFechar}
+      onClose={() => {
+        if (fechandoPorCodigo.current) {
+          fechandoPorCodigo.current = false;
+          return;
+        }
+        aoFechar();
+      }}
       onClick={(e) => {
         if (e.target === ref.current) aoFechar();
       }}

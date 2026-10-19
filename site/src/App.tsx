@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import { useSessao } from './lib/sessao';
+import { useSessao, type Perfil } from './lib/sessao';
 import { Entrar } from './paginas/Entrar';
 import { EsqueciSenha } from './paginas/EsqueciSenha';
 import { NovaSenha } from './paginas/NovaSenha';
@@ -10,6 +10,9 @@ import { Acessos } from './paginas/admin/Acessos';
 import { Analise } from './paginas/admin/Analise';
 import { Colaboradores } from './paginas/admin/Colaboradores';
 import { Liberacao } from './paginas/admin/Liberacao';
+import { OQueFalta } from './paginas/fornecedor/OQueFalta';
+import { MeusColaboradores } from './paginas/fornecedor/MeusColaboradores';
+import { DocumentosEmpresa } from './paginas/fornecedor/DocumentosEmpresa';
 import { Carregando } from './componentes/Carregando';
 
 export function App() {
@@ -31,6 +34,9 @@ export function App() {
       <Route path="/colaboradores" element={<SoAdmin><Colaboradores /></SoAdmin>} />
       <Route path="/liberacao" element={<SoAdmin><Liberacao /></SoAdmin>} />
       <Route path="/acessos" element={<SoAdmin><Acessos /></SoAdmin>} />
+      <Route path="/pendencias" element={<SoPerfil perfil="fornecedor"><OQueFalta /></SoPerfil>} />
+      <Route path="/meus-colaboradores" element={<SoPerfil perfil="fornecedor"><MeusColaboradores /></SoPerfil>} />
+      <Route path="/documentos-empresa" element={<SoPerfil perfil="fornecedor"><DocumentosEmpresa /></SoPerfil>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -44,14 +50,18 @@ function ComLogin({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-// As telas do administrativo também são protegidas no banco; aqui só evitamos mostrar a tela a quem não é admin.
-function SoAdmin({ children }: { children: ReactNode }) {
+// As telas também são protegidas no banco; aqui só evitamos mostrar a tela a quem não é do perfil.
+function SoPerfil({ perfil, children }: { perfil: Perfil; children: ReactNode }) {
   const { usuario } = useSessao();
   return (
     <ComLogin>
-      {usuario?.perfil === 'admin' ? children : <Navigate to="/" replace />}
+      {usuario?.perfil === perfil ? children : <Navigate to="/" replace />}
     </ComLogin>
   );
+}
+
+function SoAdmin({ children }: { children: ReactNode }) {
+  return <SoPerfil perfil="admin">{children}</SoPerfil>;
 }
 
 function SoForaDoLogin({ children }: { children: ReactNode }) {
