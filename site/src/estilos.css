@@ -977,6 +977,21 @@ span.sub {
   margin: 0 0 12px;
 }
 
+.item-turma {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 12px 16px;
+}
+
+.item-turma > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 /* Telas do fornecedor */
 .bloco-destaque {
   padding: 16px 18px;

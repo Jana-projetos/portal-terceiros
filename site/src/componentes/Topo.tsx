@@ -45,6 +45,7 @@ export function Topo() {
             Para validar
             {naFila ? <span className="contador" aria-label={`${naFila} para validar`}>{naFila}</span> : null}
           </NavLink>
+          <NavLink to="/integracoes">Integração</NavLink>
           <NavLink to="/colaboradores" end className={({ isActive }) => (isActive && !naValidacao ? 'active' : undefined)}>
             Colaboradores
           </NavLink>
@@ -67,6 +68,7 @@ export function Topo() {
           </NavLink>
           <NavLink to="/colaboradores">Colaboradores</NavLink>
           <NavLink to="/liberacao">Aviso de liberação</NavLink>
+          <NavLink to="/integracoes">Integração</NavLink>
           <NavLink to="/acessos">Acessos</NavLink>
         </nav>
       )}

@@ -13,6 +13,7 @@ import { Liberacao } from './paginas/admin/Liberacao';
 import { OQueFalta } from './paginas/fornecedor/OQueFalta';
 import { MeusColaboradores } from './paginas/fornecedor/MeusColaboradores';
 import { DocumentosEmpresa } from './paginas/fornecedor/DocumentosEmpresa';
+import { Integracao } from './paginas/Integracao';
 import { Carregando } from './componentes/Carregando';
 
 export function App() {
@@ -33,6 +34,7 @@ export function App() {
       <Route path="/analise" element={<SoAdmin><Analise /></SoAdmin>} />
       <Route path="/colaboradores" element={<SoPerfil perfil={['admin', 'tst']}><Colaboradores /></SoPerfil>} />
       <Route path="/liberacao" element={<SoAdmin><Liberacao /></SoAdmin>} />
+      <Route path="/integracoes" element={<SoPerfil perfil={['admin', 'tst']}><Integracao /></SoPerfil>} />
       <Route path="/acessos" element={<SoAdmin><Acessos /></SoAdmin>} />
       <Route path="/pendencias" element={<SoPerfil perfil="fornecedor"><OQueFalta /></SoPerfil>} />
       <Route path="/meus-colaboradores" element={<SoPerfil perfil="fornecedor"><MeusColaboradores /></SoPerfil>} />

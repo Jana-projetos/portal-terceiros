@@ -25,6 +25,7 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261019_004_desempenho_regras_acesso.sql` | Deixa as regras de acesso e as visões de pendências rápidas (mesmo resultado, sem estourar o tempo limite do Supabase) |
 | `20261019_005_texto_aviso_liberacao.sql` | Texto do e-mail de liberação gerado para o Outlook |
 | `20261019_006_envio_fornecedor.sql` | Envio de documento com arquivo numa operação só, e envio para análise só com os obrigatórios enviados |
+| `20261019_007_integracao_tst.sql` | Turmas de integração na obra: lista de presença, confirmação dos presentes e registro da data pelo TST ou pelo administrativo |
 
 Os arquivos usados para carregar a planilha `CONTROLE_DE_INTEGRAÇÃO` não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 
