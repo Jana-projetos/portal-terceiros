@@ -1151,6 +1151,75 @@ span.sub {
   margin: 0 0 10px;
 }
 
+/* Medição mensal */
+.tabela td select,
+.tabela-conferencia select {
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 5px 8px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-campo);
+  background: var(--superficie);
+  color: var(--tinta);
+}
+
+.tabela-conferencia th,
+.tabela-conferencia td {
+  vertical-align: middle;
+  padding: 6px 8px;
+}
+
+.tabela-conferencia tbody th {
+  white-space: normal;
+  min-width: 200px;
+  padding-left: 16px;
+}
+
+.tabela-conferencia td:nth-child(n + 3),
+.tabela-conferencia thead th:nth-child(n + 3) {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.marca {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  width: 46px;
+  height: 30px;
+  border: 1px dashed var(--linha);
+  border-radius: 4px;
+  background: var(--superficie);
+  color: var(--suave);
+  cursor: pointer;
+}
+
+.marca:hover {
+  border-color: var(--petroleo);
+}
+
+.marca-ok {
+  border: 1px solid #b9d9d3;
+  background: #e3f1ef;
+  color: var(--petroleo-escuro);
+}
+
+.marca-pendente {
+  border: 1px solid #f0c3b8;
+  background: #f9e5e0;
+  color: #8c2f1c;
+}
+
+.marca-na {
+  border: 1px solid var(--linha);
+  background: #eceeee;
+  color: var(--suave);
+}
+
+.zona-final .linha-botoes {
+  margin-top: 4px;
+}
+
 /* Celular */
 @media (max-width: 760px) {
   .moldura {

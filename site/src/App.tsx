@@ -14,6 +14,8 @@ import { OQueFalta } from './paginas/fornecedor/OQueFalta';
 import { MeusColaboradores } from './paginas/fornecedor/MeusColaboradores';
 import { DocumentosEmpresa } from './paginas/fornecedor/DocumentosEmpresa';
 import { Integracao } from './paginas/Integracao';
+import { MedicaoFornecedor } from './paginas/fornecedor/Medicao';
+import { Medicoes } from './paginas/admin/Medicoes';
 import { Carregando } from './componentes/Carregando';
 
 export function App() {
@@ -39,6 +41,7 @@ export function App() {
       <Route path="/pendencias" element={<SoPerfil perfil="fornecedor"><OQueFalta /></SoPerfil>} />
       <Route path="/meus-colaboradores" element={<SoPerfil perfil="fornecedor"><MeusColaboradores /></SoPerfil>} />
       <Route path="/documentos-empresa" element={<SoPerfil perfil="fornecedor"><DocumentosEmpresa /></SoPerfil>} />
+      <Route path="/medicao" element={<SoPerfil perfil={['admin', 'fornecedor']}><MedicaoPorPerfil /></SoPerfil>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -61,6 +64,12 @@ function SoPerfil({ perfil, children }: { perfil: Perfil | Perfil[]; children: R
       {usuario && aceitos.includes(usuario.perfil) ? children : <Navigate to="/" replace />}
     </ComLogin>
   );
+}
+
+// A mesma rota serve aos dois perfis: o fornecedor envia, o administrativo confere.
+function MedicaoPorPerfil() {
+  const { usuario } = useSessao();
+  return usuario?.perfil === 'admin' ? <Medicoes /> : <MedicaoFornecedor />;
 }
 
 function SoAdmin({ children }: { children: ReactNode }) {

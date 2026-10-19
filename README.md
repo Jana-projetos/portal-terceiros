@@ -26,8 +26,10 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261019_005_texto_aviso_liberacao.sql` | Texto do e-mail de liberação gerado para o Outlook |
 | `20261019_006_envio_fornecedor.sql` | Envio de documento com arquivo numa operação só, e envio para análise só com os obrigatórios enviados |
 | `20261019_007_integracao_tst.sql` | Turmas de integração na obra: lista de presença, confirmação dos presentes e registro da data pelo TST ou pelo administrativo |
+| `20261019_008_medicao.sql` | Medição mensal (F.48): itens, medição por empresa, obra e mês, arquivos, conferência por colaborador e as ações de envio e conferência |
+| `20261019_009_medicao_remover_colaborador.sql` | Fornecedor tira da medição quem não trabalhou no mês (aplicada à parte, pelo SQL Editor) |
 
-Os arquivos usados para carregar a planilha `CONTROLE_DE_INTEGRAÇÃO` não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
+Os arquivos usados para carregar as planilhas `CONTROLE_DE_INTEGRAÇÃO` e de medição mensal não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 
 ## Perfis
 
@@ -77,6 +79,17 @@ Na **Análise de documentos**, "Baixar todos" (ou "Baixar desta empresa") junta 
 - quando um documento tem mais de um arquivo, entra "(1 de 2)", "(2 de 2)".
 
 O download individual usa o mesmo nome. O prazo de 30 dias para apagar o arquivo começa no primeiro download.
+
+## Medição mensal (F.48)
+
+Uma medição por empresa, obra e mês trabalhado, com entrega até o dia 25 do mês seguinte.
+
+- **Fornecedor**, em **Medição**: escolhe a obra e o mês e começa. A lista de colaboradores já vem com quem está liberado ou em liberação na obra; ele ajusta a situação de cada um (trabalhou, rescisão, sócio, PJ, afastado), tira quem não trabalhou e inclui quem faltou. Envia um arquivo por item (holerites, pontos e VT podem vir num arquivo só) ou marca "não se aplica" com justificativa nos itens que aceitam (adiantamento, VT, rescisão). Só consegue enviar para conferência com todos os itens enviados.
+- **Administrativo**, em **Medição**: painel do mês com as medições para conferir, com o fornecedor, retidas, aprovadas e as empresas com liberados que não começaram. Na conferência, aprova ou devolve cada item, marca colaborador por colaborador (holerite, pagamento, vale, VT, ponto, RE) e conclui: sem pendência, a medição fica aprovada; com pendência, volta para o fornecedor. A cobrança e o aviso de retenção para a engenharia da obra saem prontos para o Outlook.
+- **Retida**: medição não aprovada depois do prazo.
+- "Baixar todos" gera um ZIP com os arquivos no nome `AAAAMM_documento_empresa`, por exemplo `202609_Holerite_EMPRESA LTDA (1 de 2).pdf`.
+
+O histórico de março a agosto de 2026 veio da planilha de medição, sem obra (a planilha não tinha essa informação), com a conferência por colaborador das abas de março a maio.
 
 ## Rodar o site no computador
 
