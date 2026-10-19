@@ -52,7 +52,7 @@ export function NovaSenha() {
   return (
     <Moldura>
       <form className="formulario" onSubmit={salvar} noValidate>
-        <h2>Nova senha</h2>
+        <h2>Crie sua senha</h2>
         <p className="apoio">Acesso de {sessao.user.email}. Use pelo menos {TAMANHO_MINIMO} caracteres.</p>
 
         <label className="campo">

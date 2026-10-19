@@ -9,12 +9,14 @@ export type StatusAlocacao =
   | 'encerrado';
 
 export type LinhaAlocacao = {
+  obra_id: string;
   obra: string;
   status: StatusAlocacao;
   impeditivos_pendentes: number;
 };
 
 export type ResumoObra = {
+  obraId: string | null;
   obra: string;
   ativos: number;
   liberados: number;
@@ -33,7 +35,7 @@ export async function lerAlocacoesAbertas(): Promise<LinhaAlocacao[]> {
   for (let inicio = 0; ; inicio += TAMANHO_PAGINA) {
     const { data, error } = await supabase
       .from('v_alocacoes_resumo')
-      .select('obra, status, impeditivos_pendentes')
+      .select('obra_id, obra, status, impeditivos_pendentes')
       .neq('status', 'encerrado')
       .order('alocacao_id')
       .range(inicio, inicio + TAMANHO_PAGINA - 1);
@@ -49,7 +51,7 @@ export function resumirPorObra(linhas: LinhaAlocacao[]): ResumoObra[] {
   for (const l of linhas) {
     const r =
       porObra.get(l.obra) ??
-      { obra: l.obra, ativos: 0, liberados: 0, liberadosComPendencia: 0, comFornecedor: 0, emAnalise: 0, aguardandoTst: 0 };
+      { obraId: l.obra_id, obra: l.obra, ativos: 0, liberados: 0, liberadosComPendencia: 0, comFornecedor: 0, emAnalise: 0, aguardandoTst: 0 };
     r.ativos += 1;
     if (l.status === 'liberado') {
       r.liberados += 1;

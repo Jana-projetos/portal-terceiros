@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useSessao, type Perfil } from '../lib/sessao';
 import { lerAlocacoesAbertas, lerMinhasEmpresas, resumirPorObra, formatarCnpj, type ResumoObra } from '../lib/consultas';
 import { mensagemDeErro } from '../lib/supabase';
@@ -93,7 +94,7 @@ export function Inicio() {
                 </thead>
                 <tbody>
                   {resumo.map((r) => (
-                    <Linha key={r.obra} r={r} />
+                    <Linha key={r.obra} r={r} comLink={usuario.perfil === 'admin'} />
                   ))}
                 </tbody>
                 {resumo.length > 1 && (
@@ -110,13 +111,13 @@ export function Inicio() {
   );
 }
 
-function Linha({ r }: { r: ResumoObra }) {
+function Linha({ r, comLink = false }: { r: ResumoObra; comLink?: boolean }) {
   const emAnalise = r.emAnalise + r.aguardandoTst;
   const semPendencia = r.liberados - r.liberadosComPendencia;
   const pct = (n: number) => `${r.ativos ? (n / r.ativos) * 100 : 0}%`;
   return (
     <tr>
-      <th scope="row">{r.obra}</th>
+      <th scope="row">{comLink && r.obraId ? <Link className="link" to={`/colaboradores?obra=${r.obraId}`}>{r.obra}</Link> : r.obra}</th>
       <td className="num" data-rotulo="Ativos">{r.ativos}</td>
       <td className="num" data-rotulo="Liberados">{r.liberados}</td>
       <td className="num" data-rotulo="Liberados com pendência">{r.liberadosComPendencia || <span className="zero">0</span>}</td>
@@ -141,6 +142,7 @@ function Linha({ r }: { r: ResumoObra }) {
 function somar(lista: ResumoObra[]): ResumoObra {
   return lista.reduce(
     (t, r) => ({
+      obraId: null,
       obra: 'Total',
       ativos: t.ativos + r.ativos,
       liberados: t.liberados + r.liberados,
@@ -149,6 +151,6 @@ function somar(lista: ResumoObra[]): ResumoObra {
       emAnalise: t.emAnalise + r.emAnalise,
       aguardandoTst: t.aguardandoTst + r.aguardandoTst,
     }),
-    { obra: 'Total', ativos: 0, liberados: 0, liberadosComPendencia: 0, comFornecedor: 0, emAnalise: 0, aguardandoTst: 0 },
+    { obraId: null, obra: 'Total', ativos: 0, liberados: 0, liberadosComPendencia: 0, comFornecedor: 0, emAnalise: 0, aguardandoTst: 0 },
   );
 }

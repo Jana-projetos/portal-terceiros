@@ -5,4 +5,6 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   base: '/portal-terceiros/',
   plugins: [react()],
+  // supabase-js + React ficam num pacote só (~145 KB compactado), o que é aceitável para o portal.
+  build: { chunkSizeWarningLimit: 700 },
 });

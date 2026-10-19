@@ -12,6 +12,7 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `supabase/migrations` | Estrutura do banco, na ordem em que foi aplicada no Supabase |
 | `supabase/testes` | Teste das regras de acesso (quem vê o quê), para rodar num Postgres local |
 | `site` | O site (React + Vite), publicado no GitHub Pages |
+| `supabase/functions` | Função `gerenciar-acesso`: cria acessos e gera o link de primeiro acesso ou de nova senha |
 | `.github/workflows` | Publicação automática do site a cada atualização da branch `main` |
 
 ### Migrações do banco
@@ -22,6 +23,7 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261019_002_ajustes_migracao.sql` | CPF opcional com aviso de pendência de cadastro, NR extra por colaborador e área temporária da carga da planilha |
 | `20261019_003_remover_area_migracao.sql` | Remove a área temporária depois da carga |
 | `20261019_004_desempenho_regras_acesso.sql` | Deixa as regras de acesso e as visões de pendências rápidas (mesmo resultado, sem estourar o tempo limite do Supabase) |
+| `20261019_005_texto_aviso_liberacao.sql` | Texto do e-mail de liberação gerado para o Outlook |
 
 Os arquivos usados para carregar a planilha `CONTROLE_DE_INTEGRAÇÃO` não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 
@@ -56,7 +58,13 @@ insert into public.usuarios (id, nome, email, perfil)
 select id, 'Nome da pessoa', email, 'admin' from auth.users where email = 'email@emais.com';
 ```
 
-Logins de fornecedores e TSTs serão criados pelo próprio portal, na tela do administrativo.
+Os demais acessos (fornecedores, TSTs e outros do administrativo) são criados no portal, em **Acessos**. O portal gera o link de primeiro acesso e monta o e-mail; o administrativo envia pelo Outlook. Nenhum e-mail sai do Supabase nesse fluxo.
+
+O link vale pelo prazo definido em **Authentication > Sign In / Providers > Email > Email OTP Expiration**. O padrão é 1 hora; para dar tempo de o fornecedor abrir o e-mail, o recomendado é 86400 segundos (24 horas).
+
+### Publicar a função de acessos
+
+A função fica em `supabase/functions/gerenciar-acesso` e é publicada com o Supabase CLI (`supabase functions deploy gerenciar-acesso --no-verify-jwt`). Ela confere sozinha se quem chama é administrativo ativo e usa a chave de serviço, que só existe no ambiente do Supabase.
 
 ## Rodar o site no computador
 

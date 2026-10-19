@@ -1,0 +1,365 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
+import { supabase, enderecoDoSite } from './supabase';
+import type { StatusAlocacao } from './consultas';
+import type { Perfil } from './sessao';
+import type { SituacaoPendencia } from './formato';
+
+const TAMANHO_PAGINA = 1000;
+
+// Lê todas as linhas de uma consulta, em páginas de 1.000 (limite padrão da API do Supabase).
+async function lerTudo<T>(montar: (inicio: number, fim: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
+  const todas: T[] = [];
+  for (let inicio = 0; ; inicio += TAMANHO_PAGINA) {
+    const { data, error } = await montar(inicio, inicio + TAMANHO_PAGINA - 1);
+    if (error) throw error;
+    todas.push(...(data ?? []));
+    if (!data || data.length < TAMANHO_PAGINA) break;
+  }
+  return todas;
+}
+
+// ---------------------------------------------------------------- Acessos
+
+export type Acesso = {
+  id: string;
+  nome: string;
+  email: string;
+  perfil: Perfil;
+  ativo: boolean;
+  criado_em: string;
+  empresas: { id: string; razao_social: string }[];
+  obras: { id: string; nome: string }[];
+};
+
+export async function lerAcessos(): Promise<Acesso[]> {
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('id, nome, email, perfil, ativo, criado_em, usuarios_empresas(empresas(id, razao_social)), tst_obras(obras(id, nome))')
+    .order('nome');
+  if (error) throw error;
+  type Bruto = Omit<Acesso, 'empresas' | 'obras'> & {
+    usuarios_empresas: { empresas: { id: string; razao_social: string } | null }[];
+    tst_obras: { obras: { id: string; nome: string } | null }[];
+  };
+  return ((data ?? []) as unknown as Bruto[]).map((u) => ({
+    id: u.id,
+    nome: u.nome,
+    email: u.email,
+    perfil: u.perfil,
+    ativo: u.ativo,
+    criado_em: u.criado_em,
+    empresas: u.usuarios_empresas.map((x) => x.empresas).filter((x): x is { id: string; razao_social: string } => !!x),
+    obras: u.tst_obras.map((x) => x.obras).filter((x): x is { id: string; nome: string } => !!x),
+  }));
+}
+
+export type EmpresaOpcao = { id: string; razao_social: string; cnpj: string; temAcesso: boolean };
+
+export async function lerEmpresas(): Promise<EmpresaOpcao[]> {
+  const [{ data: empresas, error: e1 }, { data: vinculos, error: e2 }] = await Promise.all([
+    supabase.from('empresas').select('id, razao_social, cnpj').order('razao_social'),
+    supabase.from('usuarios_empresas').select('empresa_id'),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+  const ocupadas = new Set((vinculos ?? []).map((v) => v.empresa_id as string));
+  return (empresas ?? []).map((e) => ({ ...e, temAcesso: ocupadas.has(e.id) }));
+}
+
+export type Obra = { id: string; nome: string };
+
+export async function lerObras(): Promise<Obra[]> {
+  const { data, error } = await supabase.from('obras').select('id, nome').eq('ativa', true).order('nome');
+  if (error) throw error;
+  return data ?? [];
+}
+
+export type LinkAcesso = {
+  usuario_id: string;
+  nome: string;
+  email: string;
+  perfil: Perfil;
+  link: string;
+  primeiro_acesso: boolean;
+};
+
+async function chamarFuncaoAcesso(corpo: Record<string, unknown>): Promise<LinkAcesso> {
+  const { data, error } = await supabase.functions.invoke('gerenciar-acesso', {
+    body: { ...corpo, destino: enderecoDoSite },
+  });
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      const detalhe = await error.context.json().catch(() => null);
+      throw new Error(detalhe?.erro ?? 'Não foi possível concluir.');
+    }
+    throw error;
+  }
+  return data as LinkAcesso;
+}
+
+export function criarAcesso(dados: { nome: string; email: string; perfil: Perfil; empresas: string[]; obras: string[] }) {
+  return chamarFuncaoAcesso({ acao: 'criar', ...dados });
+}
+
+export function gerarLinkAcesso(usuarioId: string) {
+  return chamarFuncaoAcesso({ acao: 'link', usuario_id: usuarioId });
+}
+
+export async function alterarAtivo(usuarioId: string, ativo: boolean) {
+  const { error } = await supabase.from('usuarios').update({ ativo }).eq('id', usuarioId);
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------- Análise de documentos
+
+export type DocumentoEmAnalise = {
+  id: string;
+  tipo_codigo: string;
+  data_emissao: string | null;
+  data_vencimento_informada: string | null;
+  dispensado: boolean;
+  dados: Record<string, unknown>;
+  enviado_em: string;
+  aceite_lgpd_em: string | null;
+  tipos_documento: {
+    nome: string;
+    grupo: 'empresa' | 'colaborador' | 'obra';
+    area: string;
+    regra: 'emissao_mais_prazo' | 'vigencia_informada' | 'sem_vencimento';
+    validade_dias: number | null;
+    impeditivo: boolean;
+  };
+  empresas: { razao_social: string; cnpj: string };
+  colaboradores: { nome: string; cpf: string | null } | null;
+  arquivos: {
+    id: string;
+    caminho: string;
+    nome_original: string;
+    tamanho_bytes: number | null;
+    tipo_mime: string | null;
+    baixado_em: string | null;
+    apagado_em: string | null;
+  }[];
+};
+
+export async function lerFilaAnalise(): Promise<DocumentoEmAnalise[]> {
+  return lerTudo<DocumentoEmAnalise>((inicio, fim) =>
+    supabase
+      .from('documentos')
+      .select(
+        'id, tipo_codigo, data_emissao, data_vencimento_informada, dispensado, dados, enviado_em, aceite_lgpd_em, ' +
+          'tipos_documento(nome, grupo, area, regra, validade_dias, impeditivo), empresas(razao_social, cnpj), ' +
+          'colaboradores(nome, cpf), arquivos(id, caminho, nome_original, tamanho_bytes, tipo_mime, baixado_em, apagado_em)',
+      )
+      .eq('status', 'em_analise')
+      .order('enviado_em')
+      .range(inicio, fim) as unknown as PromiseLike<{ data: DocumentoEmAnalise[] | null; error: unknown }>,
+  );
+}
+
+export async function contarEmAnalise(): Promise<number> {
+  const { count, error } = await supabase
+    .from('documentos')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'em_analise');
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export function vencimentoDoDocumento(d: Pick<DocumentoEmAnalise, 'data_emissao' | 'data_vencimento_informada' | 'dispensado' | 'tipos_documento'>): string | null {
+  if (d.dispensado) return null;
+  const t = d.tipos_documento;
+  if (t.regra === 'emissao_mais_prazo' && d.data_emissao && t.validade_dias) {
+    const [a, m, dia] = d.data_emissao.split('-').map(Number);
+    return new Date(Date.UTC(a, m - 1, dia + t.validade_dias)).toISOString().slice(0, 10);
+  }
+  if (t.regra === 'vigencia_informada') return d.data_vencimento_informada;
+  return null;
+}
+
+export async function abrirArquivo(caminho: string) {
+  const { data, error } = await supabase.storage.from('documentos').createSignedUrl(caminho, 300);
+  if (error) throw error;
+  window.open(data.signedUrl, '_blank', 'noopener');
+}
+
+export async function baixarArquivo(arquivo: { id: string; caminho: string; nome_original: string }) {
+  const { data, error } = await supabase.storage
+    .from('documentos')
+    .createSignedUrl(arquivo.caminho, 300, { download: arquivo.nome_original });
+  if (error) throw error;
+  const { error: erroRegistro } = await supabase.rpc('registrar_download', { p_arquivos: [arquivo.id] });
+  if (erroRegistro) throw erroRegistro;
+  const a = document.createElement('a');
+  a.href = data.signedUrl;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+export async function aprovarDocumento(id: string) {
+  const { error } = await supabase.rpc('aprovar_documento', { p_documento: id });
+  if (error) throw error;
+}
+
+export async function devolverDocumento(id: string, motivo: string) {
+  const { error } = await supabase.rpc('devolver_documento', { p_documento: id, p_motivo: motivo });
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------- Colaboradores e alocações
+
+export type AlocacaoResumo = {
+  alocacao_id: string;
+  status: StatusAlocacao;
+  obra_id: string;
+  obra: string;
+  colaborador_id: string;
+  colaborador: string;
+  funcao: string | null;
+  empresa_id: string;
+  empresa: string;
+  inicio_conferencia: string | null;
+  aprovado_admin_em: string | null;
+  validado_tst_em: string | null;
+  data_integracao: string | null;
+  vencimento_integracao: string | null;
+  impeditivos_pendentes: number;
+  pendentes_adm: number;
+  pendentes_sst: number;
+  devolvidos: number;
+  em_analise: number;
+  a_vencer: number;
+};
+
+export async function lerAlocacoes(): Promise<AlocacaoResumo[]> {
+  return lerTudo<AlocacaoResumo>((inicio, fim) =>
+    supabase
+      .from('v_alocacoes_resumo')
+      .select(
+        'alocacao_id, status, obra_id, obra, colaborador_id, colaborador, funcao, empresa_id, empresa, inicio_conferencia, ' +
+          'aprovado_admin_em, validado_tst_em, data_integracao, vencimento_integracao, impeditivos_pendentes, pendentes_adm, ' +
+          'pendentes_sst, devolvidos, em_analise, a_vencer',
+      )
+      .order('alocacao_id')
+      .range(inicio, fim) as unknown as PromiseLike<{ data: AlocacaoResumo[] | null; error: unknown }>,
+  );
+}
+
+export async function lerIdsComPendenciaCadastro(): Promise<Set<string>> {
+  const { data, error } = await supabase.from('colaboradores').select('id').not('pendencia_cadastro', 'is', null);
+  if (error) throw error;
+  return new Set((data ?? []).map((c) => c.id as string));
+}
+
+export type Colaborador = {
+  id: string;
+  nome: string;
+  cpf: string | null;
+  funcao_texto: string | null;
+  situacao: 'ativo' | 'demitido' | 'desistente';
+  pendencia_cadastro: string | null;
+  funcoes: { nome: string } | null;
+};
+
+export async function lerColaborador(id: string): Promise<Colaborador> {
+  const { data, error } = await supabase
+    .from('colaboradores')
+    .select('id, nome, cpf, funcao_texto, situacao, pendencia_cadastro, funcoes(nome)')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data as unknown as Colaborador;
+}
+
+export async function salvarCadastro(id: string, dados: { nome: string; cpf: string | null; pendencia_cadastro: string | null }) {
+  const { error } = await supabase.from('colaboradores').update(dados).eq('id', id);
+  if (error) {
+    if ((error as { code?: string }).code === '23505') throw new Error('Já existe outro colaborador desta empresa com este CPF.');
+    throw error;
+  }
+}
+
+export type Pendencia = {
+  tipo_codigo: string;
+  documento: string;
+  grupo: 'empresa' | 'colaborador' | 'obra';
+  area: string;
+  impeditivo: boolean;
+  vencimento: string | null;
+  dias_para_vencer: number | null;
+  status_envio_aberto: string | null;
+  motivo_devolucao: string | null;
+  situacao: SituacaoPendencia;
+};
+
+export async function lerPendencias(alocacaoId: string): Promise<Pendencia[]> {
+  const { data, error } = await supabase
+    .from('v_pendencias')
+    .select('tipo_codigo, documento, grupo, area, impeditivo, vencimento, dias_para_vencer, status_envio_aberto, motivo_devolucao, situacao')
+    .eq('alocacao_id', alocacaoId);
+  if (error) throw error;
+  return (data ?? []) as Pendencia[];
+}
+
+export async function aprovarAlocacao(id: string) {
+  const { error } = await supabase.rpc('aprovar_alocacao', { p_alocacao: id });
+  if (error) throw error;
+}
+
+export async function registrarIntegracao(id: string, dataIso: string) {
+  const { error } = await supabase.rpc('registrar_integracao', { p_alocacao: id, p_data: dataIso });
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------- Aviso de liberação
+
+export type AvisoLiberacao = {
+  id: string;
+  obra_id: string;
+  alocacoes: string[];
+  destinatarios: string | null;
+  assunto: string;
+  corpo: string;
+  gerado_em: string;
+  marcado_enviado_em: string | null;
+};
+
+export async function lerAvisos(obraId: string): Promise<AvisoLiberacao[]> {
+  const { data, error } = await supabase
+    .from('avisos_liberacao')
+    .select('id, obra_id, alocacoes, destinatarios, assunto, corpo, gerado_em, marcado_enviado_em')
+    .eq('obra_id', obraId)
+    .order('gerado_em', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as AvisoLiberacao[];
+}
+
+export async function gerarAviso(obraId: string, alocacoes: string[], destinatarios: string): Promise<AvisoLiberacao> {
+  const { data, error } = await supabase.rpc('gerar_aviso_liberacao', {
+    p_obra: obraId,
+    p_alocacoes: alocacoes,
+    p_destinatarios: destinatarios,
+  });
+  if (error) throw error;
+  return data as AvisoLiberacao;
+}
+
+export async function marcarAvisoEnviado(id: string) {
+  const { error } = await supabase.from('avisos_liberacao').update({ marcado_enviado_em: new Date().toISOString() }).eq('id', id);
+  if (error) throw error;
+}
+
+export function linkOutlook(para: string, assunto: string, corpo: string): string {
+  const destino = para
+    .split(/[;,\s]+/)
+    .map((e) => e.trim())
+    .filter(Boolean)
+    .join(';');
+  return `mailto:${encodeURIComponent(destino).replace(/%3B/g, ';').replace(/%40/g, '@')}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+}
+
+export async function copiarTexto(texto: string) {
+  await navigator.clipboard.writeText(texto);
+}
