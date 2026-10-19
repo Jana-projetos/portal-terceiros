@@ -6,7 +6,7 @@ import { mensagemDeErro } from '../../lib/supabase';
 import { formatarCnpj } from '../../lib/consultas';
 import { data, diasAte, formatarCpf, tamanhoArquivo } from '../../lib/formato';
 import {
-  abrirArquivo, aprovarDocumento, baixarArquivo, devolverDocumento, lerFilaAnalise, vencimentoDoDocumento,
+  abrirArquivo, aprovarDocumento, baixarArquivo, baixarTodos, devolverDocumento, lerFilaAnalise, nomeDoZip, nomePadronizado, vencimentoDoDocumento,
   type DocumentoEmAnalise,
 } from '../../lib/admin';
 
@@ -25,6 +25,7 @@ export function Analise() {
   const [busca, setBusca] = useState('');
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [devolvendo, setDevolvendo] = useState<DocumentoEmAnalise | null>(null);
+  const [baixando, setBaixando] = useState<string | null>(null);
 
   async function carregar() {
     try {
@@ -75,6 +76,24 @@ export function Analise() {
   }
 
   const total = fila?.length ?? 0;
+  const contarArquivos = (docs: DocumentoEmAnalise[]) => docs.reduce((n, d) => n + d.arquivos.filter((a) => !a.apagado_em).length, 0);
+  const visiveis = grupos.flatMap(([, docs]) => docs);
+  const arquivosVisiveis = contarArquivos(visiveis);
+
+  async function baixarLote(chave: string, docs: DocumentoEmAnalise[], rotulo: string) {
+    setErro(null);
+    setOk(null);
+    setBaixando(chave);
+    try {
+      const qtd = await baixarTodos(docs, nomeDoZip(rotulo), (f, t) => setOk(`Baixando ${f} de ${t} arquivos`));
+      setOk(`${qtd} ${qtd === 1 ? 'arquivo baixado' : 'arquivos baixados'} num ZIP, já com o nome padronizado. O prazo de 30 dias para apagar começa a contar agora.`);
+      await carregar();
+    } catch (e) {
+      setErro(mensagemDeErro(e as Error));
+    } finally {
+      setBaixando(null);
+    }
+  }
 
   return (
     <Pagina
@@ -96,6 +115,19 @@ export function Analise() {
             <span>Buscar</span>
             <input type="search" placeholder="Empresa ou colaborador" value={busca} onChange={(e) => setBusca(e.target.value)} />
           </label>
+          {arquivosVisiveis > 0 && (
+            <div className="filtros-acao">
+              <button
+                type="button"
+                className="botao"
+                disabled={!!baixando}
+                onClick={() => baixarLote('todos', visiveis, busca.trim() ? busca.trim() : 'fila_de_analise')}
+              >
+                {baixando === 'todos' ? 'Preparando ZIP' : `Baixar todos (${arquivosVisiveis} ${arquivosVisiveis === 1 ? 'arquivo' : 'arquivos'})`}
+              </button>
+              <small className="dica">Nome dos arquivos: data de emissão_documento_colaborador</small>
+            </div>
+          )}
         </div>
       )}
 
@@ -109,9 +141,16 @@ export function Analise() {
 
       {grupos.map(([empresa, docs]) => (
         <section key={empresa} className="bloco">
-          <h2 className="bloco-titulo">
-            {empresa} <span className="sub">{formatarCnpj(docs[0].empresas.cnpj)}</span>
-          </h2>
+          <div className="barra-lista">
+            <h2 className="bloco-titulo">
+              {empresa} <span className="sub">{formatarCnpj(docs[0].empresas.cnpj)}</span>
+            </h2>
+            {grupos.length > 1 && contarArquivos(docs) > 0 && (
+              <button type="button" className="botao botao-secundario botao-pequeno" disabled={!!baixando} onClick={() => baixarLote(empresa, docs, empresa)}>
+                {baixando === empresa ? 'Preparando ZIP' : `Baixar desta empresa (${contarArquivos(docs)})`}
+              </button>
+            )}
+          </div>
           <div className="tabela-rolagem">
             <table className="tabela tabela-lista">
               <thead>
@@ -164,8 +203,8 @@ export function Analise() {
                               <span className="sub">{a.nome_original} (apagado)</span>
                             ) : (
                               <>
-                                <button type="button" className="link-botao" onClick={() => arquivo(() => abrirArquivo(a.caminho))}>
-                                  {a.nome_original}
+                                <button type="button" className="link-botao" title={a.nome_original} onClick={() => arquivo(() => abrirArquivo(a.caminho))}>
+                                  {nomePadronizado(d, a, d.arquivos.filter((x) => !x.apagado_em).indexOf(a) + 1, d.arquivos.filter((x) => !x.apagado_em).length)}
                                 </button>
                                 <small className="sub">
                                   {tamanhoArquivo(a.tamanho_bytes)}
@@ -175,7 +214,7 @@ export function Analise() {
                                   type="button"
                                   className="botao botao-discreto botao-pequeno"
                                   onClick={() => arquivo(async () => {
-                                    await baixarArquivo(a);
+                                    await baixarArquivo(d, a);
                                     await carregar();
                                   })}
                                 >

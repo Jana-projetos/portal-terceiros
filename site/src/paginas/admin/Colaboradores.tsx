@@ -124,6 +124,7 @@ export function Colaboradores() {
         </label>
       </div>
 
+      {alocacoes && (
       <div className="chips chips-filtro" role="group" aria-label="Situação">
         {filtrosDoPerfil.map((f) => (
           <button
@@ -137,6 +138,7 @@ export function Colaboradores() {
           </button>
         ))}
       </div>
+      )}
 
       {!alocacoes && !erro && <Carregando />}
       {alocacoes && (

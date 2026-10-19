@@ -183,10 +183,37 @@ export async function abrirArquivo(caminho: string) {
   window.open(data.signedUrl, '_blank', 'noopener');
 }
 
-export async function baixarArquivo(arquivo: { id: string; caminho: string; nome_original: string }) {
-  const { data, error } = await supabase.storage
-    .from('documentos')
-    .createSignedUrl(arquivo.caminho, 300, { download: arquivo.nome_original });
+type ArquivoDoc = DocumentoEmAnalise['arquivos'][number];
+
+function limparParaNome(texto: string): string {
+  return texto
+    .replace(/[\\/]+/g, '-')
+    .replace(/[:*?"<>|]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function dataCompacta(valor: string): string {
+  const d = new Date(valor);
+  if (valor.length === 10) return valor.replace(/-/g, '');
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
+// Nome do arquivo para guardar no SharePoint: AAAAMMDD_documento_colaborador.
+// A data é a emissão do documento; quando o tipo não tem emissão (RG, CTPS, seguro), vale a data do envio.
+export function nomePadronizado(d: DocumentoEmAnalise, arquivo: ArquivoDoc, ordem: number, total: number): string {
+  const dataArq = dataCompacta(d.data_emissao ?? d.enviado_em);
+  const quem = d.colaboradores?.nome ?? d.empresas.razao_social;
+  const extensao = arquivo.nome_original.includes('.') ? arquivo.nome_original.split('.').pop()!.toLowerCase() : 'pdf';
+  const parte = total > 1 ? ` (${ordem} de ${total})` : '';
+  return `${dataArq}_${limparParaNome(d.tipos_documento.nome)}_${limparParaNome(quem)}${parte}.${extensao}`;
+}
+
+export async function baixarArquivo(d: DocumentoEmAnalise, arquivo: ArquivoDoc) {
+  const ativos = d.arquivos.filter((a) => !a.apagado_em);
+  const nome = nomePadronizado(d, arquivo, ativos.indexOf(arquivo) + 1, ativos.length);
+  const { data, error } = await supabase.storage.from('documentos').createSignedUrl(arquivo.caminho, 300, { download: nome });
   if (error) throw error;
   const { error: erroRegistro } = await supabase.rpc('registrar_download', { p_arquivos: [arquivo.id] });
   if (erroRegistro) throw erroRegistro;
@@ -196,6 +223,52 @@ export async function baixarArquivo(arquivo: { id: string; caminho: string; nome
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+// Baixa todos os arquivos dos documentos num ZIP, já com o nome padronizado.
+// Com mais de uma empresa, cada empresa vira uma pasta dentro do ZIP.
+export async function baixarTodos(docs: DocumentoEmAnalise[], nomeZip: string, aoProgredir?: (feitos: number, total: number) => void): Promise<number> {
+  const { zipSync } = await import('fflate');
+  const itens = docs.flatMap((d) => {
+    const ativos = d.arquivos.filter((a) => !a.apagado_em);
+    return ativos.map((a, i) => ({ d, a, nome: nomePadronizado(d, a, i + 1, ativos.length) }));
+  });
+  if (itens.length === 0) throw new Error('Nenhum arquivo para baixar.');
+  const variasEmpresas = new Set(itens.map((x) => x.d.empresas.razao_social)).size > 1;
+  const conteudo: Record<string, Uint8Array> = {};
+  const usados = new Set<string>();
+
+  let feitos = 0;
+  for (const { d, a, nome } of itens) {
+    const { data: blob, error } = await supabase.storage.from('documentos').download(a.caminho);
+    if (error || !blob) throw new Error(`Não foi possível baixar ${a.nome_original}. Tente de novo.`);
+    let caminho = variasEmpresas ? `${limparParaNome(d.empresas.razao_social)}/${nome}` : nome;
+    // Mesmo nome duas vezes (ex.: dois envios no mesmo dia): acrescenta um número.
+    for (let n = 2; usados.has(caminho); n++) caminho = caminho.replace(/(\.[^.]+)$/, ` ${n}$1`);
+    usados.add(caminho);
+    conteudo[caminho] = new Uint8Array(await blob.arrayBuffer());
+    feitos += 1;
+    aoProgredir?.(feitos, itens.length);
+  }
+
+  const zip = zipSync(conteudo, { level: 0 });
+  const { error: erroRegistro } = await supabase.rpc('registrar_download', { p_arquivos: itens.map((x) => x.a.id) });
+  if (erroRegistro) throw erroRegistro;
+
+  const url = URL.createObjectURL(new Blob([zip as Uint8Array<ArrayBuffer>], { type: 'application/zip' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nomeZip;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  return itens.length;
+}
+
+export function nomeDoZip(rotulo: string): string {
+  const hoje = dataCompacta(new Date().toISOString());
+  return `${hoje}_documentos_${limparParaNome(rotulo).replace(/\s+/g, '_')}.zip`;
 }
 
 export async function aprovarDocumento(id: string) {

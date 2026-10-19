@@ -68,6 +68,16 @@ O link vale pelo prazo definido em **Authentication > Sign In / Providers > Emai
 
 A função fica em `supabase/functions/gerenciar-acesso` e é publicada com o Supabase CLI (`supabase functions deploy gerenciar-acesso --no-verify-jwt`). Ela confere sozinha se quem chama é administrativo ativo e usa a chave de serviço, que só existe no ambiente do Supabase.
 
+## Nome dos arquivos baixados
+
+Na **Análise de documentos**, "Baixar todos" (ou "Baixar desta empresa") junta os arquivos num ZIP, com uma pasta por empresa quando há mais de uma. Cada arquivo sai com o nome `AAAAMMDD_documento_colaborador`, por exemplo `20261010_ASO_AUGUSTO FRANCISCO DE LIMA.pdf`:
+
+- a data é a emissão do documento; nos tipos sem emissão (RG, CTPS, seguro) vale o dia do envio;
+- nos documentos da empresa, no lugar do colaborador vai a razão social;
+- quando um documento tem mais de um arquivo, entra "(1 de 2)", "(2 de 2)".
+
+O download individual usa o mesmo nome. O prazo de 30 dias para apagar o arquivo começa no primeiro download.
+
 ## Rodar o site no computador
 
 ```bash
