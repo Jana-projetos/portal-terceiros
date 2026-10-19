@@ -21,6 +21,7 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261019_001_modelo_fase1.sql` | Tabelas, regras de vencimento, regras de acesso por perfil, ações do fluxo (enviar, aprovar, devolver, validar) e armazenamento privado dos arquivos |
 | `20261019_002_ajustes_migracao.sql` | CPF opcional com aviso de pendência de cadastro, NR extra por colaborador e área temporária da carga da planilha |
 | `20261019_003_remover_area_migracao.sql` | Remove a área temporária depois da carga |
+| `20261019_004_desempenho_regras_acesso.sql` | Deixa as regras de acesso e as visões de pendências rápidas (mesmo resultado, sem estourar o tempo limite do Supabase) |
 
 Os arquivos usados para carregar a planilha `CONTROLE_DE_INTEGRAÇÃO` não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 

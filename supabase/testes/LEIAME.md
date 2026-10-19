@@ -7,6 +7,7 @@ createdb portal_teste
 psql -d portal_teste -f 01_stubs_supabase.sql
 psql -d portal_teste -f ../migrations/20261019_001_modelo_fase1.sql
 psql -d portal_teste -f ../migrations/20261019_002_ajustes_migracao.sql
+psql -d portal_teste -f ../migrations/20261019_004_desempenho_regras_acesso.sql
 psql -d portal_teste -f 02_privilegios_padrao.sql
 psql -d portal_teste -f 03_cenario_acessos.sql
 ```
