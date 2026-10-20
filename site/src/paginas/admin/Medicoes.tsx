@@ -7,12 +7,13 @@ import { Carregando } from '../../componentes/Carregando';
 import { mensagemDeErro, enderecoDoSite } from '../../lib/supabase';
 import { useSessao } from '../../lib/sessao';
 import { formatarCnpj } from '../../lib/consultas';
-import { data, tamanhoArquivo } from '../../lib/formato';
+import { data, hojeIso, tamanhoArquivo } from '../../lib/formato';
+import { AVISO_PORTAL, assinatura as linhasAssinatura, guardarDestinatariosObra, lerAssinatura, lerDestinatariosObra, mesBarra, nomeLegivel, type Assinatura } from '../../lib/cobrancas';
 import { copiarTexto, lerAlocacoes, linkOutlook, type AlocacaoResumo } from '../../lib/admin';
 import {
   CHAVES_CONFERENCIA, abrirArquivoMedicao, arquivosAtuais, avaliarItem, baixarArquivoMedicao, baixarMedicao, competenciaPadrao,
   concluirConferencia, conferirColaborador, lerMedicao, lerMedicoes, lerTiposMedicao, mesCurto, mesPorExtenso, nomeArquivoMedicao,
-  registrarCobranca, rotuloConferencia, rotuloSituacaoColaborador, rotuloStatusItem, rotuloStatusMedicao, seloItem, seloMedicao,
+  combinarPrazo, registrarCobranca, rotuloConferencia, rotuloSituacaoColaborador, rotuloStatusItem, rotuloStatusMedicao, seloItem, seloMedicao,
   type ChaveConferencia, type DetalheMedicao, type ItemMedicao, type LinhaColaborador, type Marcacao, type Medicao,
   type SituacaoColaborador, type TipoMedicao,
 } from '../../lib/medicao';
@@ -290,6 +291,8 @@ function Painel({ competencia, aoMudarMes }: { competencia: string; aoMudarMes: 
                         <td>
                           <span className={`selo ${seloMedicao[m.status]}`}>{rotuloStatusMedicao[m.status]}</span>
                           {m.retida && <small className="sub texto-erro">retida</small>}
+                          {m.em_atraso && <small className="sub texto-alerta">em atraso, até {data(m.prazo_combinado && m.prazo_combinado > m.tolerancia ? m.prazo_combinado : m.tolerancia).slice(0, 5)}</small>}
+                          {m.prazo_combinado && m.status !== 'aprovada' && <small className="sub">combinado até {data(m.prazo_combinado).slice(0, 5)}</small>}
                         </td>
                         <td>
                           {m.primeiro_envio_em ? data(m.primeiro_envio_em) : <span className="sub">Não enviada</span>}
@@ -385,7 +388,7 @@ function oQueFalta(m: Medicao): string {
 // ---------------------------------------------------------------- Aviso de retenção para a engenharia da obra
 
 function AvisoRetencao({
-  aberto, aoFechar, competencia, medicoes, naoIniciadas, assinatura, aoCopiar,
+  aberto, aoFechar, competencia, medicoes, naoIniciadas, assinatura: nomeAssinatura, aoCopiar,
 }: {
   aberto: boolean;
   aoFechar: () => void;
@@ -403,41 +406,44 @@ function AvisoRetencao({
   }, [medicoes, naoIniciadas]);
   const [obra, setObra] = useState('');
   const [para, setPara] = useState('');
+  const [contato, setContato] = useState<Assinatura>({ setor: 'Gente e Gestão', contato: '' });
 
   useEffect(() => {
     if (aberto && !obra && obras.length > 0) setObra(obras[0][0]);
+    if (aberto) lerAssinatura().then(setContato).catch(() => undefined);
   }, [aberto, obra, obras]);
 
   useEffect(() => {
-    if (obra) setPara(lerDestino(obra));
+    if (obra) lerDestinatariosObra(obra).then((v) => setPara(v || lerDestino(obra))).catch(() => setPara(lerDestino(obra)));
   }, [obra]);
 
-  const nomeObra = obras.find(([id]) => id === obra)?.[1] ?? '';
-  const naoAprovadas = medicoes.filter((m) => m.obra_id === obra && m.status !== 'aprovada');
-  const semMedicao = naoIniciadas.filter((n) => n.obra_id === obra);
-  const aprovadas = medicoes.filter((m) => m.obra_id === obra && m.status === 'aprovada');
-  const mes = mesPorExtenso(competencia);
-
-  const linhas = [
-    ...naoAprovadas.map((m) => `- ${m.empresa}: ${m.status === 'em_analise' ? 'em conferência na Emais' : 'documentos pendentes'}`),
-    ...semMedicao.map((n) => `- ${n.empresa}: medição não enviada`),
-  ];
-  const assunto = `Medição de ${mes}, ${nomeObra}: pagamentos retidos`;
+  const hoje = hojeIso();
+  const nomeObra = nomeLegivel(obras.find(([id]) => id === obra)?.[1] ?? '');
+  const daObra = medicoes.filter((m) => m.obra_id === obra);
+  const combinada = (m: Medicao) => !!m.prazo_combinado && m.prazo_combinado >= hoje;
+  const reter = [
+    ...daObra.filter((m) => m.status !== 'aprovada' && !combinada(m)).map((m) => ({ empresa: m.empresa, motivo: m.status === 'em_analise' ? 'em conferência na Emais' : 'documentos pendentes' })),
+    ...naoIniciadas.filter((n) => n.obra_id === obra).map((n) => ({ empresa: n.empresa, motivo: 'medição não enviada' })),
+  ].sort((a, b) => a.empresa.localeCompare(b.empresa, 'pt-BR'));
+  const aguardando = daObra.filter((m) => m.status !== 'aprovada' && combinada(m));
+  const aprovadas = daObra.filter((m) => m.status === 'aprovada');
+  const mes = mesBarra(competencia);
+  const mesNome = mes.split('/')[0];
+  const assunto = `${nomeObra}: reter pagamento de ${reter.length} ${reter.length === 1 ? 'empresa' : 'empresas'} (medição de ${mes})`;
   const corpo = [
     'Olá,',
     '',
-    linhas.length > 0
-      ? `Na obra ${nomeObra}, as empresas abaixo ainda não têm a medição de ${mes} aprovada. O pagamento delas deve ficar retido até a aprovação:`
-      : `Na obra ${nomeObra}, todas as empresas com medição de ${mes} estão aprovadas.`,
+    reter.length > 0
+      ? `As empresas abaixo não regularizaram a medição de ${mes}. Ação: não liberar o pagamento de ${mesNome} dessas empresas até novo aviso.`
+      : `Na obra ${nomeObra}, nenhuma empresa precisa ter o pagamento de ${mesNome} retido.`,
+    ...(reter.length ? ['', 'Reter pagamento:', ...reter.map((x) => `- ${nomeLegivel(x.empresa, true)}: ${x.motivo}`)] : []),
+    ...(aprovadas.length ? ['', 'Liberadas para pagamento:', ...aprovadas.map((m) => `- ${nomeLegivel(m.empresa, true)}`)] : []),
+    ...(aguardando.length
+      ? ['', 'Aguardando data combinada com o fornecedor (ainda não reter):', ...aguardando.map((m) => `- ${nomeLegivel(m.empresa, true)}: envio combinado até ${data(m.prazo_combinado).slice(0, 5)}`)]
+      : []),
     '',
-    ...linhas,
-    ...(linhas.length > 0 ? [''] : []),
-    ...(aprovadas.length > 0 ? [`Aprovadas e liberadas para pagamento: ${aprovadas.map((m) => m.empresa).join('; ')}.`, ''] : []),
-    'Assim que alguma for aprovada, aviso.',
-    '',
-    'Obrigado,',
-    assinatura,
-    'Grupo Emais',
+    'Assim que cada empresa for aprovada, enviamos a liberação.',
+    ...linhasAssinatura(nomeAssinatura, contato),
   ].join('\n');
 
   return (
@@ -461,7 +467,14 @@ function AvisoRetencao({
           <p><span className="sub">Assunto</span> {assunto}</p>
           <pre>{corpo}</pre>
           <div className="linha-botoes">
-            <a className="botao" href={linkOutlook(para, assunto, corpo)} onClick={() => guardarDestino(obra, para.trim())}>
+            <a
+              className="botao"
+              href={linkOutlook(para, assunto, corpo)}
+              onClick={() => {
+                guardarDestino(obra, para.trim());
+                guardarDestinatariosObra(obra, para).catch(() => undefined);
+              }}
+            >
               Abrir no Outlook
             </a>
             <button type="button" className="botao botao-secundario" onClick={() => copiarTexto(corpo).then(aoCopiar).catch(() => undefined)}>
@@ -469,7 +482,7 @@ function AvisoRetencao({
             </button>
           </div>
         </div>
-        <p className="dica">Os destinatários de cada obra ficam lembrados neste computador.</p>
+        <p className="dica">Os destinatários de cada obra ficam guardados para os próximos meses.</p>
       </div>
     </Dialogo>
   );
@@ -588,6 +601,7 @@ function DetalheAdmin({ id, aoVoltar }: { id: string; aoVoltar: () => void }) {
           <dd>
             <span className={`selo ${seloMedicao[m.status]}`}>{rotuloStatusMedicao[m.status]}</span>
             {m.retida && <span className="texto-erro"> retida</span>}
+            {m.em_atraso && <span className="texto-alerta"> em atraso</span>}
           </dd>
         </div>
         <div>
@@ -617,6 +631,15 @@ function DetalheAdmin({ id, aoVoltar }: { id: string; aoVoltar: () => void }) {
           </div>
         )}
       </dl>
+
+      {m.status !== 'aprovada' && (
+        <PrazoCombinado
+          medicao={m}
+          aoSalvar={(dataIso, obs) =>
+            executar('combinado', () => combinarPrazo(m.id, dataIso, obs), dataIso ? `Data combinada registrada: ${data(dataIso)}. A retenção espera até essa data.` : 'Data combinada removida.')
+          }
+        />
+      )}
 
       {daPlanilha && <p className="aviso aviso-ok">Medição trazida da planilha de controle. Os arquivos dela estão no SharePoint, não no portal.</p>}
 
@@ -866,6 +889,40 @@ function DetalheAdmin({ id, aoVoltar }: { id: string; aoVoltar: () => void }) {
   );
 }
 
+// Quando o fornecedor responde à notificação com uma data, ela fica registrada e a retenção espera.
+function PrazoCombinado({ medicao: m, aoSalvar }: { medicao: Medicao; aoSalvar: (dataIso: string | null, obs: string | null) => void }) {
+  const [dataIso, setDataIso] = useState(m.prazo_combinado ?? '');
+  const [obs, setObs] = useState(m.prazo_combinado_obs ?? '');
+  useEffect(() => {
+    setDataIso(m.prazo_combinado ?? '');
+    setObs(m.prazo_combinado_obs ?? '');
+  }, [m.prazo_combinado, m.prazo_combinado_obs]);
+  return (
+    <form
+      className="caixa em-linha prazo-combinado"
+      onSubmit={(e) => {
+        e.preventDefault();
+        aoSalvar(dataIso || null, obs.trim() || null);
+      }}
+    >
+      <label className="campo campo-data">
+        <span>Data combinada com o fornecedor</span>
+        <input type="date" value={dataIso} min={m.prazo} onChange={(e) => setDataIso(e.target.value)} />
+      </label>
+      <label className="campo campo-busca">
+        <span>Como foi combinado</span>
+        <input type="text" value={obs} placeholder="Ex.: respondeu o e-mail em 27/10, contador envia até 05/11" onChange={(e) => setObs(e.target.value)} />
+      </label>
+      <button className="botao botao-secundario" type="submit" disabled={dataIso === (m.prazo_combinado ?? '') && obs === (m.prazo_combinado_obs ?? '')}>
+        Salvar
+      </button>
+      <small className="dica">
+        Tolerância padrão: {data(m.tolerancia)}. Com data combinada, a retenção e o aviso à obra esperam até essa data.
+      </small>
+    </form>
+  );
+}
+
 const MOTIVOS = ['Arquivo ilegível ou cortado', 'Falta colaborador da lista', 'Documento de outro mês', 'Falta assinatura', 'Falta comprovante de pagamento'];
 
 function Devolucao({ alvo, aoFechar, aoDevolver }: { alvo: { item: ItemMedicao; tipo: TipoMedicao } | null; aoFechar: () => void; aoDevolver: (m: string) => void }) {
@@ -906,7 +963,7 @@ function Devolucao({ alvo, aoFechar, aoDevolver }: { alvo: { item: ItemMedicao; 
 }
 
 function Cobranca({
-  aberto, aoFechar, detalhe, tipos, assinatura, aoAbrir, aoCopiar,
+  aberto, aoFechar, detalhe, tipos, assinatura: nomeAssinatura, aoAbrir, aoCopiar,
 }: {
   aberto: boolean;
   aoFechar: () => void;
@@ -916,33 +973,78 @@ function Cobranca({
   aoAbrir: () => void;
   aoCopiar: () => void;
 }) {
+  const [contato, setContato] = useState<Assinatura>({ setor: 'Gente e Gestão', contato: '' });
+  useEffect(() => {
+    if (aberto) lerAssinatura().then(setContato).catch(() => undefined);
+  }, [aberto]);
+
   const { medicao: m, itens, colaboradores } = detalhe;
+  const hoje = hojeIso();
   const itemPorTipo = new Map(itens.map((i) => [i.tipo_codigo, i]));
   const faltando = tipos
     .map((t) => ({ t, i: itemPorTipo.get(t.codigo) }))
     .filter(({ i }) => i && (i.status === 'nao_enviado' || i.status === 'devolvido'))
-    .map(({ t, i }) => `- ${t.item}. ${t.nome}${i!.status === 'devolvido' && i!.motivo_devolucao ? ` (devolvido: ${i!.motivo_devolucao})` : ''}`);
+    .map(({ t, i }) => `- ${t.item}. ${t.nome}${i!.status === 'devolvido' ? ` (devolvido${i!.motivo_devolucao ? `: ${i!.motivo_devolucao.toLowerCase()}` : ''}; corrija no portal)` : ''}`);
   const pendentes = colaboradores
     .map((l) => ({ l, ks: CHAVES_CONFERENCIA.filter((k) => l.conferencia[k] === 'pendente') }))
     .filter((x) => x.ks.length > 0)
-    .map(({ l, ks }) => `- ${l.nome}: ${ks.map((k) => rotuloConferencia[k].toLowerCase()).join(', ')}`);
-  const mes = mesPorExtenso(m.competencia);
-  const assunto = `Medição de ${mes}${m.obra ? `, ${m.obra}` : ''}: pendências da ${m.empresa}`;
+    .map(({ l, ks }) => `- ${nomeLegivel(l.nome)}: ${ks.map((k) => rotuloConferencia[k].toLowerCase()).join(', ')}`);
+  const empresa = nomeLegivel(m.empresa, true);
+  const mes = mesBarra(m.competencia);
+  const mesNome = mes.split('/')[0];
+  const limite = m.prazo_combinado && m.prazo_combinado > m.tolerancia ? m.prazo_combinado : m.tolerancia;
+  const fase = hoje <= m.prazo ? 'no_prazo' : hoje <= limite ? 'atraso' : 'retida';
+  const oQue = [
+    m.obra ? `Obra ${nomeLegivel(m.obra)}` : 'Medição do mês',
+    ...(faltando.length >= 12 ? ['- Medição não enviada'] : faltando),
+    ...(pendentes.length ? ['', 'Colaboradores com pendência (corrija no portal):', ...pendentes] : []),
+    ...(faltando.length === 0 && pendentes.length === 0 ? ['- Documentos enviados, falta clicar em Enviar para conferência'] : []),
+  ];
+  const passos = [
+    `1. Acesse ${enderecoDoSite}medicao`,
+    `2. Abra ${mes}, envie ou corrija os itens acima e clique em Enviar para conferência.`,
+    '3. A Emais confere em até 3 dias úteis.',
+  ];
+  const assunto =
+    fase === 'no_prazo'
+      ? `Medição de ${mes}: envio até ${data(m.prazo).slice(0, 5)}, ${empresa}`
+      : fase === 'atraso'
+        ? `Medição de ${mes} em atraso: envie até ${data(limite).slice(0, 5)} para evitar a retenção do pagamento, ${empresa}`
+        : `Pagamento retido: medição de ${mes} pendente, ${empresa}`;
+  const abertura =
+    fase === 'no_prazo'
+      ? [`A medição de ${mes} deve ser enviada pelo Portal de Terceiros até ${data(m.prazo)}. Conferimos o que já foi enviado e ainda falta:`]
+      : fase === 'atraso'
+        ? [`O prazo da medição de ${mes} terminou em ${data(m.prazo)} e ainda faltam documentos. Para que o pagamento de ${mesNome} não seja retido, regularize pelo portal até ${data(limite)}.`]
+        : [`A medição de ${mes} não foi regularizada até ${data(limite)}. Como os itens abaixo continuam pendentes, o pagamento de ${mesNome} está retido.`];
+  const impacto =
+    fase === 'no_prazo'
+      ? [`Se a medição não for apresentada no prazo, o pagamento de ${mesNome} pode ser retido.`]
+      : fase === 'atraso'
+        ? [
+            `Pedimos que responda este e-mail informando a data em que os documentos serão enviados no portal.`,
+            '',
+            `Se não for regularizado até ${data(limite)}:`,
+            `- o pagamento de ${mesNome} fica retido até a aprovação da medição;`,
+            '- a engenharia da obra é avisada da retenção;',
+            '- o atraso fica registrado no histórico de entregas da empresa, considerado na avaliação de fornecedores da Emais.',
+          ]
+        : ['O pagamento é liberado assim que a medição for aprovada. O atraso fica registrado no histórico de entregas da empresa, considerado na avaliação de fornecedores da Emais.'];
   const corpo = [
-    'Olá,',
+    `Olá, equipe da ${empresa},`,
     '',
-    `Conferimos a medição de ${mes} da ${m.empresa}${m.obra ? ` na obra ${m.obra}` : ''} e ainda falta:`,
+    ...abertura,
     '',
-    ...(faltando.length > 0 ? ['Documentos:', ...faltando, ''] : []),
-    ...(pendentes.length > 0 ? ['Colaboradores com pendência:', ...pendentes, ''] : []),
-    ...(faltando.length === 0 && pendentes.length === 0 ? ['- Enviar a medição para conferência no portal', ''] : []),
-    `O prazo de entrega é ${data(m.prazo)}. Sem a medição aprovada, o pagamento fica retido.`,
+    'O que falta:',
+    ...oQue,
     '',
-    `Envie pelo Portal de Terceiros, em Medição: ${enderecoDoSite}medicao`,
+    ...impacto,
     '',
-    'Obrigado,',
-    assinatura,
-    'Grupo Emais',
+    'Como regularizar:',
+    ...passos,
+    '',
+    AVISO_PORTAL,
+    ...linhasAssinatura(nomeAssinatura, contato),
   ].join('\n');
 
   return (

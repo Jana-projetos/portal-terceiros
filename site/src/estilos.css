@@ -1494,6 +1494,14 @@ a.celula:hover {
 }
 
 /* Cobranças */
+.prazo-combinado {
+  margin-top: 12px;
+}
+
+.prazo-combinado .dica {
+  flex-basis: 100%;
+}
+
 .faixa-aviso {
   display: flex;
   flex-wrap: wrap;

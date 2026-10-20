@@ -41,7 +41,11 @@ export type Medicao = {
   origem: 'portal' | 'migracao';
   qtd_colaboradores: number;
   entregue_no_prazo: boolean;
-  retida: boolean;
+  retida: boolean; // não aprovada depois da tolerância (dia 30) e da data combinada
+  em_atraso: boolean; // passou do dia 25, ainda dentro da tolerância ou da data combinada
+  tolerancia: string;
+  prazo_combinado: string | null;
+  prazo_combinado_obs: string | null;
   itens_pendentes: number;
   itens_em_analise: number;
   itens_devolvidos: number;
@@ -196,7 +200,7 @@ export async function lerTiposMedicao(): Promise<TipoMedicao[]> {
 }
 
 const CAMPOS_MEDICAO =
-  'id, empresa_id, empresa, cnpj, email_cobranca, obra_id, obra, competencia, prazo, status, primeiro_envio_em, enviada_em, conferente, ultima_analise_em, ultima_cobranca_em, observacao, origem, qtd_colaboradores, entregue_no_prazo, retida, itens_pendentes, itens_em_analise, itens_devolvidos, colaboradores_pendentes';
+  'id, empresa_id, empresa, cnpj, email_cobranca, obra_id, obra, competencia, prazo, status, primeiro_envio_em, enviada_em, conferente, ultima_analise_em, ultima_cobranca_em, observacao, origem, qtd_colaboradores, entregue_no_prazo, retida, em_atraso, tolerancia, prazo_combinado, prazo_combinado_obs, itens_pendentes, itens_em_analise, itens_devolvidos, colaboradores_pendentes';
 
 export async function lerMedicoes(filtro: { competencia?: string; empresaId?: string } = {}): Promise<Medicao[]> {
   let q = supabase.from('v_medicoes').select(CAMPOS_MEDICAO);
@@ -339,6 +343,11 @@ export async function concluirConferencia(medicaoId: string): Promise<StatusMedi
   const { data, error } = await supabase.rpc('concluir_conferencia_medicao', { p_medicao: medicaoId });
   if (error) throw error;
   return data as StatusMedicao;
+}
+
+export async function combinarPrazo(medicaoId: string, dataIso: string | null, obs: string | null) {
+  const { error } = await supabase.rpc('combinar_prazo_medicao', { p_medicao: medicaoId, p_data: dataIso, p_obs: obs });
+  if (error) throw error;
 }
 
 export async function registrarCobranca(ids: string[]) {

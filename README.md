@@ -29,6 +29,7 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261019_008_medicao.sql` | Medição mensal (F.48): itens, medição por empresa, obra e mês, arquivos, conferência por colaborador e as ações de envio e conferência |
 | `20261019_009_medicao_remover_colaborador.sql` | Fornecedor tira da medição quem não trabalhou no mês (aplicada à parte, pelo SQL Editor) |
 | `20261019_010_cobrancas.sql` | Registro das cobranças por e-mail já abertas ou dispensadas e destinatários da engenharia de cada obra |
+| `20261019_011_cobranca_tres_passos.sql` | Tolerância até o dia 30, data combinada com o fornecedor, novos tipos de cobrança e assinatura dos e-mails |
 
 Os arquivos usados para carregar as planilhas `CONTROLE_DE_INTEGRAÇÃO` e de medição mensal não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 
@@ -88,7 +89,7 @@ Uma medição por empresa, obra e mês trabalhado, com entrega até o dia 25 do 
 - **Fornecedor**, em **Medição**: escolhe a obra e o mês e começa. A lista de colaboradores já vem com quem está liberado ou em liberação na obra; ele ajusta a situação de cada um (trabalhou, rescisão, sócio, PJ, afastado), tira quem não trabalhou e inclui quem faltou. Envia um arquivo por item (holerites, pontos e VT podem vir num arquivo só) ou marca "não se aplica" com justificativa nos itens que aceitam (adiantamento, VT, rescisão). Só consegue enviar para conferência com todos os itens enviados.
 - **Administrativo**, em **Medição**: painel do mês com as medições para conferir, com o fornecedor, retidas, aprovadas e as empresas com liberados que não começaram. Na conferência, aprova ou devolve cada item, marca colaborador por colaborador (holerite, pagamento, vale, VT, ponto, RE) e conclui: sem pendência, a medição fica aprovada; com pendência, volta para o fornecedor. A cobrança e o aviso de retenção para a engenharia da obra saem prontos para o Outlook.
 - **Histórico por empresa** (aba dentro de Medição): uma linha por empresa e uma coluna por mês, com a situação de cada medição (OK, conferir, pendente, retida). Clicando na célula, abre a medição.
-- **Retida**: medição não aprovada depois do prazo.
+- **Retida**: medição não aprovada depois da tolerância do dia 30 (ou da data combinada). Entre o dia 25 e o dia 30 ela aparece como **em atraso**.
 - "Baixar todos" gera um ZIP com os arquivos no nome `AAAAMM_documento_empresa`, por exemplo `202609_Holerite_EMPRESA LTDA (1 de 2).pdf`.
 
 O histórico de março a agosto de 2026 veio da planilha de medição, sem obra (a planilha não tinha essa informação), com a conferência por colaborador das abas de março a maio.
@@ -97,9 +98,13 @@ O histórico de março a agosto de 2026 veio da planilha de medição, sem obra 
 
 Em **Cobranças** (só administrativo), o portal monta os e-mails no calendário:
 
-- **dia 20:** lembrete da medição do mês anterior para quem ainda não enviou;
-- **dia 26:** cobrança de quem não teve a medição aprovada e aviso de retenção para a engenharia de cada obra;
-- **documentos:** dos colaboradores liberados, quando entram em 30 dias, em 15 dias e quando vencem.
+- **Medição, dia 20:** lembrete do mês anterior para quem ainda não enviou (prazo dia 25).
+- **Medição, dia 26:** notificação de atraso com tolerância até o dia 30 (as guias vencem no dia 20) e pedido de retorno com a data de envio.
+- **Medição, depois do dia 30:** pagamento retido para o fornecedor e aviso de retenção para a engenharia da obra. Quando o fornecedor responde com uma data, o administrativo registra a **data combinada** na medição e a retenção espera até ela.
+- **Documentos dos liberados:** quando entram em 30 dias, em 15 dias e quando vencem.
+- **Integração, toda segunda-feira:** colaboradores ainda não liberados com documento obrigatório faltando ou devolvido, parado há 3 dias úteis ou mais.
+
+Todos os e-mails dizem que documentos e correções só valem pelo portal. A assinatura (setor, e-mail e telefone) é editada na própria tela de Cobranças.
 
 Quando há e-mails prontos, aparece um aviso no topo do portal e um contador no menu. Cada e-mail abre no Outlook do computador já preenchido; a pessoa confere e clica em enviar. O que foi aberto ou dispensado fica registrado e não volta. O destinatário da engenharia de cada obra é informado uma vez e fica guardado.
 

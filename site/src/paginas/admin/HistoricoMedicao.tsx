@@ -27,8 +27,8 @@ const ROTULO: Record<Estado, string> = { aprovada: 'OK', em_analise: 'Conferir',
 const LEGENDA: Record<Estado, string> = {
   aprovada: 'Aprovada',
   em_analise: 'Enviada, aguardando conferência',
-  pendente: 'Com pendência, ainda no prazo',
-  retida: 'Retida: não aprovada e prazo vencido',
+  pendente: 'Com pendência, dentro do prazo ou da tolerância (dia 30)',
+  retida: 'Retida: não aprovada depois do dia 30 ou da data combinada',
 };
 
 type Linha = { empresa_id: string; empresa: string; cnpj: string; porMes: Map<string, Medicao[]>; total: number; aprovadas: number; retidas: number };

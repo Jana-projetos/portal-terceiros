@@ -5,9 +5,9 @@ import { mensagemDeErro } from '../../lib/supabase';
 import { useSessao } from '../../lib/sessao';
 import { data, hojeIso } from '../../lib/formato';
 import { copiarTexto, linkOutlook } from '../../lib/admin';
-import { guardarDestinatariosObra, montarFila, registrarCobrancas, titulosGrupo, type Cobranca, type Fila, type TipoCobranca } from '../../lib/cobrancas';
+import { guardarAssinatura, guardarDestinatariosObra, montarFila, registrarCobrancas, titulosGrupo, type Assinatura, type Cobranca, type Fila, type TipoCobranca } from '../../lib/cobrancas';
 
-const ORDEM: TipoCobranca[] = ['lembrete_medicao', 'cobranca_medicao', 'retencao_obra', 'vencimento_documento'];
+const ORDEM: TipoCobranca[] = ['lembrete_medicao', 'notificacao_medicao', 'cobranca_medicao', 'retencao_obra', 'vencimento_documento', 'integracao_documentos'];
 const LIMITE_LINK = 1900;
 
 export function Cobrancas() {
@@ -68,7 +68,21 @@ export function Cobrancas() {
             <strong>
               Hoje, {data(hojeIso())}: {abertas.length === 0 ? 'nenhum e-mail para enviar' : `${abertas.length} ${abertas.length === 1 ? 'e-mail pronto' : 'e-mails prontos'}`}.
             </strong>{' '}
-            Calendário: lembrete da medição no dia 20, cobrança e aviso de retenção no dia 26, documentos quando entram em 30 dias, em 15 dias e quando vencem. Próxima rodada da medição: {data(fila.proxima)}.
+            Medição: lembrete no dia 20, notificação de atraso no dia 26 com tolerância até o dia 30, e retenção com aviso à obra depois disso. Documentos: em 30 dias, em 15 dias e
+            quando vencem. Integração: toda segunda-feira. Próxima rodada da medição: {data(fila.proxima)}.
+            <EditarAssinatura
+              atual={fila.assinatura}
+              aoSalvar={async (a) => {
+                setErro(null);
+                try {
+                  await guardarAssinatura(a);
+                  setOk('Assinatura atualizada.');
+                  await carregar();
+                } catch (e) {
+                  setErro(mensagemDeErro(e as Error));
+                }
+              }}
+            />
             <details className="ajuda">
               <summary>O botão não abre o Outlook do computador?</summary>
               <p>
@@ -153,5 +167,37 @@ export function Cobrancas() {
         </>
       )}
     </Pagina>
+  );
+}
+
+function EditarAssinatura({ atual, aoSalvar }: { atual: Assinatura; aoSalvar: (a: Assinatura) => void }) {
+  const [setor, setSetor] = useState(atual.setor);
+  const [contato, setContato] = useState(atual.contato);
+  useEffect(() => {
+    setSetor(atual.setor);
+    setContato(atual.contato);
+  }, [atual]);
+  return (
+    <details className="ajuda">
+      <summary>Assinatura dos e-mails: {atual.setor}{atual.contato ? `, ${atual.contato}` : ''}</summary>
+      <form
+        className="em-linha"
+        onSubmit={(e) => {
+          e.preventDefault();
+          aoSalvar({ setor, contato });
+        }}
+      >
+        <label className="campo campo-compacto">
+          <span>Setor</span>
+          <input type="text" value={setor} onChange={(e) => setSetor(e.target.value)} />
+        </label>
+        <label className="campo campo-compacto campo-busca">
+          <span>E-mail e telefone</span>
+          <input type="text" value={contato} onChange={(e) => setContato(e.target.value)} placeholder="gente10@emais.com | (17) 3512-4716" />
+        </label>
+        <button className="botao botao-secundario" type="submit">Salvar</button>
+      </form>
+      <p>O nome de quem abre o e-mail entra acima do setor.</p>
+    </details>
   );
 }

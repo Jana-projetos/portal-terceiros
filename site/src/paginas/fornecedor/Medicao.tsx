@@ -138,7 +138,8 @@ function ListaFornecedor({ aoAbrir }: { aoAbrir: (id: string) => void }) {
                     <td>{m.obra ?? <span className="sub">Controle anterior, sem obra</span>}</td>
                     <td>
                       {data(m.prazo)}
-                      {m.retida && <small className="sub texto-erro">prazo vencido</small>}
+                      {m.retida && <small className="sub texto-erro">pagamento retido</small>}
+                      {m.em_atraso && <small className="sub texto-alerta">em atraso: regularize até {data(limiteDe(m))}</small>}
                     </td>
                     <td><span className={`selo ${seloMedicao[m.status]}`}>{rotuloStatusMedicao[m.status]}</span></td>
                     <td>{resumoDoQueFalta(m)}</td>
@@ -156,6 +157,11 @@ function ListaFornecedor({ aoAbrir }: { aoAbrir: (id: string) => void }) {
       )}
     </Pagina>
   );
+}
+
+// Até quando o fornecedor ainda regulariza sem retenção: tolerância do dia 30 ou a data combinada, o que for maior.
+function limiteDe(m: Medicao): string {
+  return m.prazo_combinado && m.prazo_combinado > m.tolerancia ? m.prazo_combinado : m.tolerancia;
 }
 
 function resumoDoQueFalta(m: Medicao): string {
@@ -253,13 +259,14 @@ function DetalheFornecedor({ id, aoVoltar }: { id: string; aoVoltar: () => void 
       {erro && <Mensagem tipo="erro" aoFechar={() => setErro(null)}>{erro}</Mensagem>}
       {ok && <Mensagem tipo="ok" aoFechar={() => setOk(null)}>{ok}</Mensagem>}
 
-      <div className={`aviso ${m.status === 'aprovada' ? 'aviso-ok' : m.status === 'pendente_fornecedor' || m.retida ? 'aviso-alerta' : 'aviso-ok'}`}>
+      <div className={`aviso ${m.status === 'aprovada' ? 'aviso-ok' : m.status === 'pendente_fornecedor' || m.retida || m.em_atraso ? 'aviso-alerta' : 'aviso-ok'}`}>
         <span className={`selo ${seloMedicao[m.status]}`}>{rotuloStatusMedicao[m.status]}</span>{' '}
         {m.status === 'aberta' && 'Envie os documentos, confira a lista de colaboradores e, no fim da página, envie para a conferência.'}
         {m.status === 'em_analise' && `Enviada em ${data(m.enviada_em)}. A Emais está conferindo; se faltar algo, a medição volta para você com o motivo.`}
         {m.status === 'pendente_fornecedor' && 'A Emais encontrou pendências. Corrija o que está marcado como devolvido ou pendente e envie de novo.'}
         {m.status === 'aprovada' && `Conferida${m.ultima_analise_em ? ` em ${data(m.ultima_analise_em)}` : ''}. Não há nada a fazer.`}
-        {m.retida && m.status !== 'aprovada' && <strong> O prazo venceu e o pagamento fica retido até a aprovação.</strong>}
+        {m.em_atraso && editavel && <strong> O prazo do dia {data(m.prazo).slice(0, 5)} venceu. Regularize até {data(limiteDe(m))} para não ter o pagamento retido.</strong>}
+        {m.retida && m.status !== 'aprovada' && <strong> O pagamento está retido até a aprovação desta medição.</strong>}
       </div>
 
       {grupos.map((g) => (
