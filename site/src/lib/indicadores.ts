@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { hojeIso } from './formato';
 import { lerAlocacoes, type AlocacaoResumo } from './admin';
-import { lerMedicoes, lerTiposMedicao, type Medicao, type TipoMedicao } from './medicao';
+import { lerTiposMedicao, lerTodasMedicoes, type Medicao, type TipoMedicao } from './medicao';
 
 // Metas de referência dos indicadores. Para mudar uma meta, basta trocar o número aqui.
 export const METAS = {
@@ -42,7 +42,7 @@ export type BaseIndicadores = {
 
 export async function lerBaseIndicadores(): Promise<BaseIndicadores> {
   const [medicoes, itens, tipos, eventos, alocacoes, pendencias] = await Promise.all([
-    lerMedicoes(),
+    lerTodasMedicoes(),
     lerTudo<ItemResumo>((i, f) =>
       supabase.from('medicoes_itens').select('medicao_id, tipo_codigo, status').order('id').range(i, f) as unknown as PromiseLike<{ data: ItemResumo[] | null; error: unknown }>,
     ),

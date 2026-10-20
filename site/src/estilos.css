@@ -1389,6 +1389,110 @@ span.sub {
   min-width: 220px;
 }
 
+/* Abas da medição e histórico */
+.abas {
+  display: flex;
+  gap: 4px;
+  margin: -4px 0 18px;
+  border-bottom: 1px solid var(--linha);
+}
+
+.abas a {
+  padding: 8px 14px;
+  font-weight: 600;
+  color: var(--suave);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+}
+
+.abas a:hover {
+  color: var(--tinta);
+}
+
+.abas a[aria-current='page'] {
+  color: var(--petroleo);
+  border-bottom-color: var(--petroleo);
+}
+
+.celulas {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.celula {
+  display: inline-block;
+  min-width: 62px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+a.celula:hover {
+  outline: 2px solid var(--petroleo);
+  outline-offset: 1px;
+}
+
+.celula-aprovada {
+  background: #e3f1ef;
+  color: var(--petroleo-escuro);
+}
+
+.celula-em_analise {
+  background: #e4edf2;
+  color: #2b4f61;
+}
+
+.celula-pendente {
+  background: #fbefd2;
+  color: #6b4a00;
+}
+
+.celula-retida {
+  background: #f9e5e0;
+  color: #8c2f1c;
+}
+
+.celula-vazia {
+  height: 22px;
+  border: 1px dashed var(--linha);
+  background: transparent;
+}
+
+.legenda .celula {
+  min-width: 0;
+}
+
+.legenda .celula-vazia {
+  width: 40px;
+}
+
+.tabela-historico th,
+.tabela-historico td {
+  vertical-align: top;
+}
+
+.tabela-historico tbody th,
+.tabela-historico tfoot th,
+.tabela-historico thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--superficie);
+  white-space: normal;
+  min-width: 240px;
+  box-shadow: 1px 0 0 var(--linha);
+}
+
+.tabela-historico tfoot td {
+  font-weight: 600;
+}
+
 /* Celular */
 @media (max-width: 760px) {
   .cartoes {
@@ -1398,6 +1502,12 @@ span.sub {
   .barras li {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  .tabela-historico tbody th,
+  .tabela-historico tfoot th,
+  .tabela-historico thead th:first-child {
+    min-width: 150px;
   }
 
   .moldura {
@@ -1537,5 +1647,48 @@ span.sub {
 
   .tabela tfoot tr {
     border: 2px solid var(--tinta);
+  }
+}
+
+/* No celular, o histórico continua como grade, com rolagem lateral dentro do quadro */
+@media (max-width: 760px) {
+  .tabela-rolagem:has(.tabela-historico) {
+    overflow-x: auto;
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+  }
+
+  .tabela.tabela-historico {
+    display: table;
+  }
+
+  .tabela-historico thead {
+    display: table-header-group;
+  }
+
+  .tabela-historico tbody {
+    display: table-row-group;
+  }
+
+  .tabela-historico tfoot {
+    display: table-footer-group;
+  }
+
+  .tabela-historico tr {
+    display: table-row;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .tabela-historico th,
+  .tabela-historico td,
+  .tabela-historico tfoot th,
+  .tabela-historico tfoot td {
+    display: table-cell;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--linha);
+    font-size: 0.9rem;
   }
 }

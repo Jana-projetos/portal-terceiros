@@ -207,6 +207,18 @@ export async function lerMedicoes(filtro: { competencia?: string; empresaId?: st
   return (data ?? []) as Medicao[];
 }
 
+// Todas as medições, em páginas de 1.000 (o histórico cresce todo mês).
+export async function lerTodasMedicoes(): Promise<Medicao[]> {
+  const todas: Medicao[] = [];
+  for (let inicio = 0; ; inicio += 1000) {
+    const { data, error } = await supabase.from('v_medicoes').select(CAMPOS_MEDICAO).order('id').range(inicio, inicio + 999);
+    if (error) throw error;
+    todas.push(...((data ?? []) as Medicao[]));
+    if (!data || data.length < 1000) break;
+  }
+  return todas;
+}
+
 export type DetalheMedicao = { medicao: Medicao; itens: ItemMedicao[]; colaboradores: LinhaColaborador[] };
 
 export async function lerMedicao(id: string): Promise<DetalheMedicao> {

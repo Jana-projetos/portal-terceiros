@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { Link, useSearchParams } from 'react-router-dom';
 import { Pagina, Mensagem } from '../../componentes/Pagina';
 import { Dialogo } from '../../componentes/Dialogo';
+import { AbasMedicao, HistoricoMedicao } from './HistoricoMedicao';
 import { Carregando } from '../../componentes/Carregando';
 import { mensagemDeErro, enderecoDoSite } from '../../lib/supabase';
 import { useSessao } from '../../lib/sessao';
@@ -48,11 +49,10 @@ export function Medicoes() {
   const [params, setParams] = useSearchParams();
   const id = params.get('m');
   const competencia = params.get('mes') ?? competenciaPadrao();
-  return id ? (
-    <DetalheAdmin id={id} aoVoltar={() => setParams({ mes: competencia })} />
-  ) : (
-    <Painel competencia={competencia} aoMudarMes={(mes) => setParams({ mes })} />
-  );
+  const doHistorico = params.get('de') === 'historico';
+  if (id) return <DetalheAdmin id={id} aoVoltar={() => setParams(doHistorico ? { ver: 'historico' } : { mes: competencia })} />;
+  if (params.get('ver') === 'historico') return <HistoricoMedicao />;
+  return <Painel competencia={competencia} aoMudarMes={(mes) => setParams({ mes })} />;
 }
 
 // ---------------------------------------------------------------- Painel do mês
@@ -195,6 +195,7 @@ function Painel({ competencia, aoMudarMes }: { competencia: string; aoMudarMes: 
         </button>
       }
     >
+      <AbasMedicao atual="mes" />
       {erro && <Mensagem tipo="erro" aoFechar={() => setErro(null)}>{erro}</Mensagem>}
       {ok && <Mensagem tipo="ok" aoFechar={() => setOk(null)}>{ok}</Mensagem>}
 
