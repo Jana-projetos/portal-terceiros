@@ -17,6 +17,7 @@ import { Integracao } from './paginas/Integracao';
 import { MedicaoFornecedor } from './paginas/fornecedor/Medicao';
 import { Medicoes } from './paginas/admin/Medicoes';
 import { Indicadores } from './paginas/admin/Indicadores';
+import { Cobrancas } from './paginas/admin/Cobrancas';
 import { Carregando } from './componentes/Carregando';
 
 export function App() {
@@ -38,6 +39,7 @@ export function App() {
       <Route path="/colaboradores" element={<SoPerfil perfil={['admin', 'tst']}><Colaboradores /></SoPerfil>} />
       <Route path="/liberacao" element={<SoAdmin><Liberacao /></SoAdmin>} />
       <Route path="/integracoes" element={<SoPerfil perfil={['admin', 'tst']}><Integracao /></SoPerfil>} />
+      <Route path="/cobrancas" element={<SoAdmin><Cobrancas /></SoAdmin>} />
       <Route path="/indicadores" element={<SoAdmin><Indicadores /></SoAdmin>} />
       <Route path="/acessos" element={<SoAdmin><Acessos /></SoAdmin>} />
       <Route path="/pendencias" element={<SoPerfil perfil="fornecedor"><OQueFalta /></SoPerfil>} />

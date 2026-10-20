@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useSessao, nomesPerfil } from '../lib/sessao';
 import { contarAguardandoTst, contarEmAnalise } from '../lib/admin';
+import { contarCobrancas } from '../lib/cobrancas';
 
 export function Topo() {
   const { usuario, sair } = useSessao();
   const ehAdmin = usuario?.perfil === 'admin';
   const ehTst = usuario?.perfil === 'tst';
-  const { search } = useLocation();
+  const { search, pathname } = useLocation();
+  const [cobrancas, setCobrancas] = useState<number | null>(null);
   const naValidacao = search.includes('situacao=tst');
   const [naFila, setNaFila] = useState<number | null>(null);
 
@@ -18,6 +20,12 @@ export function Topo() {
     const t = window.setInterval(() => contar().then(setNaFila).catch(() => undefined), 60000);
     return () => window.clearInterval(t);
   }, [ehAdmin, ehTst]);
+
+  // E-mails de cobrança prontos no dia (calculado no máximo a cada 5 minutos).
+  useEffect(() => {
+    if (!ehAdmin || !usuario) return;
+    contarCobrancas(usuario.nome).then(setCobrancas).catch(() => setCobrancas(null));
+  }, [ehAdmin, usuario, pathname]);
 
   return (
     <header className="topo">
@@ -71,9 +79,21 @@ export function Topo() {
           <NavLink to="/liberacao">Aviso de liberação</NavLink>
           <NavLink to="/integracoes">Integração</NavLink>
           <NavLink to="/medicao">Medição</NavLink>
+          <NavLink to="/cobrancas">
+            Cobranças
+            {cobrancas ? <span className="contador" aria-label={`${cobrancas} e-mails prontos`}>{cobrancas}</span> : null}
+          </NavLink>
           <NavLink to="/indicadores">Indicadores</NavLink>
           <NavLink to="/acessos">Acessos</NavLink>
         </nav>
+      )}
+      {ehAdmin && !!cobrancas && pathname !== '/cobrancas' && (
+        <div className="faixa-aviso" role="status">
+          <span>
+            {cobrancas === 1 ? '1 e-mail de cobrança pronto' : `${cobrancas} e-mails de cobrança prontos`} para conferir e enviar pelo Outlook.
+          </span>
+          <Link className="botao botao-pequeno" to="/cobrancas">Ver cobranças</Link>
+        </div>
       )}
     </header>
   );

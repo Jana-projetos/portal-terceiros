@@ -1493,6 +1493,91 @@ a.celula:hover {
   font-weight: 600;
 }
 
+/* Cobranças */
+.faixa-aviso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  background: #fbefd2;
+  color: #6b4a00;
+  font-weight: 500;
+  border-top: 1px solid #f0dca8;
+}
+
+.ajuda {
+  margin-top: 8px;
+  font-size: 0.92rem;
+}
+
+.ajuda summary {
+  cursor: pointer;
+  color: var(--petroleo);
+  font-weight: 600;
+}
+
+.ajuda p {
+  margin: 6px 0 0;
+}
+
+.lista-cobrancas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.cobranca {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.cobranca-topo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cobranca-assunto {
+  margin: 0;
+  font-weight: 600;
+}
+
+.cobranca-assunto .sub {
+  display: inline;
+  margin-right: 6px;
+}
+
+.cobranca details summary {
+  cursor: pointer;
+  color: var(--petroleo);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.cobranca-texto {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  font-family: var(--fonte);
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #fbfcfc;
+  border-left: 3px solid var(--petroleo);
+  border-radius: 4px;
+}
+
 /* Celular */
 @media (max-width: 760px) {
   .cartoes {
@@ -1502,6 +1587,10 @@ a.celula:hover {
   .barras li {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  .lista-cobrancas {
+    grid-template-columns: 1fr;
   }
 
   .tabela-historico tbody th,
