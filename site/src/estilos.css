@@ -1220,8 +1220,186 @@ span.sub {
   margin-top: 4px;
 }
 
+/* Indicadores */
+.cartoes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-top: 4px solid var(--petroleo);
+  border-radius: 8px;
+}
+
+.cartao-alerta {
+  border-top-color: var(--ambar);
+}
+
+.cartao-rotulo {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--suave);
+}
+
+.cartao-valor {
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--tinta);
+}
+
+.cartao-apoio {
+  font-size: 0.86rem;
+  color: var(--suave);
+}
+
+.graficos {
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.grafico {
+  position: relative;
+  margin: 0 0 16px;
+  padding: 14px 16px 10px;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.graficos .grafico {
+  margin: 0;
+}
+
+.grafico svg {
+  display: block;
+  overflow: visible;
+}
+
+.grafico-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.grafico-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--suave);
+}
+
+.grafico-meta i {
+  width: 18px;
+  border-top: 2px dashed var(--tinta);
+}
+
+.grafico-nota {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: var(--suave);
+}
+
+.grafico-dica {
+  position: absolute;
+  top: 36px;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  font-size: 0.86rem;
+  background: var(--tinta);
+  color: #fff;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.barras {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.barras li {
+  display: grid;
+  grid-template-columns: minmax(120px, 42%) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+
+.barras-rotulo {
+  color: var(--tinta);
+  line-height: 1.25;
+}
+
+.barras-trilho {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.barras-barra {
+  height: 14px;
+  background: var(--petroleo);
+  border-radius: 0 4px 4px 0;
+  flex: none;
+  max-width: calc(100% - 48px);
+}
+
+.barras-valor {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ranking {
+  margin-top: 20px;
+}
+
+.ranking .detalhe-subtitulo {
+  margin: 0;
+}
+
+.ranking .dica {
+  margin: 4px 0 8px;
+}
+
+.ranking-empresa {
+  white-space: normal !important;
+  min-width: 220px;
+}
+
 /* Celular */
 @media (max-width: 760px) {
+  .cartoes {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .barras li {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
   .moldura {
     grid-template-columns: 1fr;
     min-height: auto;

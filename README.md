@@ -91,6 +91,15 @@ Uma medição por empresa, obra e mês trabalhado, com entrega até o dia 25 do 
 
 O histórico de março a agosto de 2026 veio da planilha de medição, sem obra (a planilha não tinha essa informação), com a conferência por colaborador das abas de março a maio.
 
+## Indicadores
+
+Em **Indicadores** (só administrativo), com filtro de obra e período:
+
+- **Medição:** medições aprovadas por mês, entrega até o dia 25, tempo de conferência da Emais (dias úteis do envio à conclusão), itens pendentes nas entregas parciais e ranking dos 10 piores e 10 melhores fornecedores (só meses com prazo vencido).
+- **Liberação:** tempo de liberação (do envio para análise à validação do TST, separado em Emais e TST), liberados com documento vencido ou faltando (por obra e por documento) e rankings de fornecedores nos dois.
+
+As metas ficam em `site/src/lib/indicadores.ts` (`METAS`). Entrega no prazo e tempo de conferência só existem a partir das medições feitas no portal, porque a planilha não tinha essas datas.
+
 ## Rodar o site no computador
 
 ```bash

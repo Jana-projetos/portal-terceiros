@@ -71,6 +71,7 @@ export function Topo() {
           <NavLink to="/liberacao">Aviso de liberação</NavLink>
           <NavLink to="/integracoes">Integração</NavLink>
           <NavLink to="/medicao">Medição</NavLink>
+          <NavLink to="/indicadores">Indicadores</NavLink>
           <NavLink to="/acessos">Acessos</NavLink>
         </nav>
       )}
