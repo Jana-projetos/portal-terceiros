@@ -5,6 +5,7 @@
 // Ações:
 //   { acao: 'criar', nome, email, perfil: 'fornecedor'|'tst'|'engenharia'|'admin', empresas?: uuid[], obras?: uuid[], destino }
 //   { acao: 'link', usuario_id, destino }
+//   { acao: 'editar', usuario_id, nome, email, empresas?: uuid[], obras?: uuid[], destino }
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 
 const cabecalhos = {
@@ -69,6 +70,7 @@ Deno.serve(async (req) => {
 
   if (corpo.acao === 'criar') return criar(servico, chamador.id, corpo, redirectTo);
   if (corpo.acao === 'link') return gerarLink(servico, chamador.id, corpo, redirectTo);
+  if (corpo.acao === 'editar') return editar(servico, chamador.id, corpo);
   return erro(400, 'Ação desconhecida');
 });
 
@@ -190,4 +192,106 @@ async function gerarLink(servico: Cliente, adminId: string, corpo: Record<string
     link: resultado.data.properties.action_link,
     primeiro_acesso: nuncaEntrou,
   });
+}
+
+// Corrige nome e e-mail do acesso e troca as empresas (fornecedor) ou as obras (TST e engenharia).
+// O perfil não muda por aqui: para trocar de perfil, desative e crie outro acesso.
+async function editar(servico: Cliente, adminId: string, corpo: Record<string, unknown>) {
+  const usuarioId = String(corpo.usuario_id ?? '');
+  const nome = String(corpo.nome ?? '').trim();
+  const email = String(corpo.email ?? '').trim().toLowerCase();
+  const empresas = Array.isArray(corpo.empresas) ? [...new Set(corpo.empresas.map(String))] : [];
+  const obras = Array.isArray(corpo.obras) ? [...new Set(corpo.obras.map(String))] : [];
+
+  if (!UUID.test(usuarioId)) return erro(400, 'Acesso inválido');
+  if (nome.length < 2) return erro(400, 'Informe o nome');
+  if (!EMAIL.test(email)) return erro(400, 'E-mail inválido');
+  if ([...empresas, ...obras].some((id) => !UUID.test(id))) return erro(400, 'Empresa ou obra inválida');
+
+  const { data: usuario } = await servico.from('usuarios').select('id, nome, email, perfil').eq('id', usuarioId).maybeSingle();
+  if (!usuario) return erro(404, 'Acesso não encontrado');
+  const perfil = usuario.perfil as string;
+  if (perfil === 'fornecedor' && empresas.length === 0) return erro(400, 'Escolha pelo menos uma empresa');
+  if ((perfil === 'tst' || perfil === 'engenharia') && obras.length === 0) return erro(400, 'Escolha pelo menos uma obra');
+
+  const trocouEmail = email !== usuario.email;
+  if (trocouEmail) {
+    const { data: outro } = await servico.from('usuarios').select('id').eq('email', email).neq('id', usuarioId).maybeSingle();
+    if (outro) return erro(409, 'Já existe outro acesso com este e-mail');
+  }
+
+  // Empresas: cada uma tem um único acesso.
+  let empresasAntes: string[] = [];
+  if (perfil === 'fornecedor') {
+    const { data: atuais } = await servico.from('usuarios_empresas').select('empresa_id').eq('usuario_id', usuarioId);
+    empresasAntes = (atuais ?? []).map((x: { empresa_id: string }) => x.empresa_id);
+    const { data: ocupadas } = await servico
+      .from('usuarios_empresas')
+      .select('empresa_id, empresas(razao_social), usuarios(email)')
+      .in('empresa_id', empresas)
+      .neq('usuario_id', usuarioId);
+    if (ocupadas && ocupadas.length > 0) {
+      const lista = ocupadas
+        .map((o: { empresas?: { razao_social?: string }; usuarios?: { email?: string } }) => `${o.empresas?.razao_social} (${o.usuarios?.email})`)
+        .join('; ');
+      return erro(409, `Estas empresas já têm outro acesso: ${lista}`);
+    }
+  }
+
+  // O e-mail do login muda primeiro: se o Supabase recusar, nada mais é alterado.
+  if (trocouEmail || nome !== usuario.nome) {
+    const { error: e } = await servico.auth.admin.updateUserById(usuarioId, {
+      ...(trocouEmail ? { email, email_confirm: true } : {}),
+      user_metadata: { nome },
+    });
+    if (e) return erro(400, `Não foi possível alterar o login: ${e.message}`);
+  }
+
+  const { error: eu } = await servico.from('usuarios').update({ nome, email }).eq('id', usuarioId);
+  if (eu) return erro(400, `Não foi possível gravar o acesso: ${eu.message}`);
+
+  let obrasAntes: string[] = [];
+  if (perfil === 'fornecedor') {
+    const sair = empresasAntes.filter((id) => !empresas.includes(id));
+    const entrar = empresas.filter((id) => !empresasAntes.includes(id));
+    if (sair.length) {
+      const { error } = await servico.from('usuarios_empresas').delete().eq('usuario_id', usuarioId).in('empresa_id', sair);
+      if (error) return erro(400, `Não foi possível tirar as empresas: ${error.message}`);
+      await servico.from('empresas').update({ email_acesso: null }).in('id', sair);
+    }
+    if (entrar.length) {
+      const { error } = await servico.from('usuarios_empresas').insert(entrar.map((empresa_id) => ({ usuario_id: usuarioId, empresa_id })));
+      if (error) return erro(400, `Não foi possível ligar as empresas: ${error.message}`);
+    }
+    await servico.from('empresas').update({ email_acesso: email }).in('id', empresas);
+  }
+  if (perfil === 'tst' || perfil === 'engenharia') {
+    const { data: atuais } = await servico.from('tst_obras').select('obra_id').eq('usuario_id', usuarioId);
+    obrasAntes = (atuais ?? []).map((x: { obra_id: string }) => x.obra_id);
+    const sair = obrasAntes.filter((id) => !obras.includes(id));
+    const entrar = obras.filter((id) => !obrasAntes.includes(id));
+    if (sair.length) {
+      const { error } = await servico.from('tst_obras').delete().eq('usuario_id', usuarioId).in('obra_id', sair);
+      if (error) return erro(400, `Não foi possível tirar as obras: ${error.message}`);
+    }
+    if (entrar.length) {
+      const { error } = await servico.from('tst_obras').insert(entrar.map((obra_id) => ({ usuario_id: usuarioId, obra_id })));
+      if (error) return erro(400, `Não foi possível ligar as obras: ${error.message}`);
+    }
+  }
+
+  await servico.from('eventos').insert({
+    tabela: 'usuarios',
+    registro_id: usuarioId,
+    acao: 'acesso_editado',
+    detalhe: {
+      nome: nome !== usuario.nome ? { de: usuario.nome, para: nome } : undefined,
+      email: trocouEmail ? { de: usuario.email, para: email } : undefined,
+      empresas: perfil === 'fornecedor' ? { de: empresasAntes, para: empresas } : undefined,
+      obras: perfil === 'tst' || perfil === 'engenharia' ? { de: obrasAntes, para: obras } : undefined,
+    },
+    usuario_id: adminId,
+  });
+
+  return resposta(200, { usuario_id: usuarioId, nome, email, perfil, trocou_email: trocouEmail });
 }

@@ -1972,3 +1972,17 @@ button.celula:hover {
   border-color: var(--ambar);
   background: #fdf6e6;
 }
+
+@media (max-width: 640px) {
+  .tabela .acoes {
+    white-space: normal;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-start;
+  }
+
+  .tabela .acoes .botao + .botao {
+    margin-left: 0;
+  }
+}

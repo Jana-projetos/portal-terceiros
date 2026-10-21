@@ -5,10 +5,13 @@ import { Carregando } from '../../componentes/Carregando';
 import { mensagemDeErro, enderecoDoSite } from '../../lib/supabase';
 import { nomesPerfil, useSessao, type Perfil } from '../../lib/sessao';
 import { formatarCnpj } from '../../lib/consultas';
+import { cnpjValido, soDigitos } from '../../lib/formato';
 import {
-  alterarAtivo, copiarTexto, criarAcesso, gerarLinkAcesso, lerAcessos, lerEmpresas, lerObras, linkOutlook,
+  alterarAtivo, cadastrarEmpresa, copiarTexto, criarAcesso, editarAcesso, gerarLinkAcesso, lerAcessos, lerEmpresas, lerObras, linkOutlook,
   type Acesso, type EmpresaOpcao, type LinkAcesso, type Obra,
 } from '../../lib/admin';
+
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function Acessos() {
   const { usuario } = useSessao();
@@ -19,6 +22,7 @@ export function Acessos() {
   const [ok, setOk] = useState<string | null>(null);
   const [novoAberto, setNovoAberto] = useState(false);
   const [link, setLink] = useState<LinkAcesso | null>(null);
+  const [editando, setEditando] = useState<Acesso | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
 
@@ -120,6 +124,9 @@ export function Acessos() {
                     {a.perfil === 'admin' && <span className="sub">Todas</span>}
                   </td>
                   <td className="acoes">
+                    <button className="botao botao-secundario botao-pequeno" type="button" disabled={ocupado === a.id} onClick={() => setEditando(a)}>
+                      Editar
+                    </button>
                     <button className="botao botao-secundario botao-pequeno" type="button" disabled={!a.ativo || ocupado === a.id} onClick={() => pedirLink(a)}>
                       Gerar link
                     </button>
@@ -141,10 +148,23 @@ export function Acessos() {
         </div>
       )}
 
+      <EditarAcesso
+        acesso={editando}
+        empresas={empresas}
+        obras={obras}
+        aoNovaEmpresa={(e) => setEmpresas((l) => [...l, e].sort((a, b) => a.razao_social.localeCompare(b.razao_social, 'pt-BR')))}
+        aoFechar={() => setEditando(null)}
+        aoSalvar={async (msg) => {
+          setEditando(null);
+          setOk(msg);
+          await carregar();
+        }}
+      />
       <NovoAcesso
         aberto={novoAberto}
         empresas={empresas}
         obras={obras}
+        aoNovaEmpresa={(e) => setEmpresas((l) => [...l, e].sort((a, b) => a.razao_social.localeCompare(b.razao_social, 'pt-BR')))}
         aoFechar={() => setNovoAberto(false)}
         aoCriar={async (l) => {
           setNovoAberto(false);
@@ -158,11 +178,12 @@ export function Acessos() {
 }
 
 function NovoAcesso({
-  aberto, empresas, obras, aoFechar, aoCriar,
+  aberto, empresas, obras, aoNovaEmpresa, aoFechar, aoCriar,
 }: {
   aberto: boolean;
   empresas: EmpresaOpcao[];
   obras: Obra[];
+  aoNovaEmpresa: (e: EmpresaOpcao) => void;
   aoFechar: () => void;
   aoCriar: (l: LinkAcesso) => void;
 }) {
@@ -171,7 +192,6 @@ function NovoAcesso({
   const [email, setEmail] = useState('');
   const [selEmpresas, setSelEmpresas] = useState<string[]>([]);
   const [selObras, setSelObras] = useState<string[]>([]);
-  const [filtroEmpresa, setFiltroEmpresa] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -182,24 +202,13 @@ function NovoAcesso({
       setEmail('');
       setSelEmpresas([]);
       setSelObras([]);
-      setFiltroEmpresa('');
       setErro(null);
     }
   }, [aberto]);
 
-  const listaEmpresas = useMemo(() => {
-    const t = filtroEmpresa.trim().toLowerCase();
-    const s = t.replace(/\D/g, '');
-    return empresas.filter((e) => !t || e.razao_social.toLowerCase().includes(t) || (s && e.cnpj.includes(s)));
-  }, [empresas, filtroEmpresa]);
-
-  function alternar(lista: string[], id: string) {
-    return lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id];
-  }
-
   const valido =
     nome.trim().length >= 2 &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
+    EMAIL_OK.test(email.trim()) &&
     (perfil !== 'fornecedor' || selEmpresas.length > 0) &&
     ((perfil !== 'tst' && perfil !== 'engenharia') || selObras.length > 0);
 
@@ -249,49 +258,19 @@ function NovoAcesso({
         </div>
 
         {perfil === 'fornecedor' && (
-          <div className="campo">
-            <span>Empresas que este acesso representa</span>
-            <small className="dica">Cada empresa tem um único acesso. Um escritório de contabilidade pode responder por várias.</small>
-            <input type="search" placeholder="Buscar por nome ou CNPJ" value={filtroEmpresa} onChange={(e) => setFiltroEmpresa(e.target.value)} />
-            <ul className="lista-marcar" aria-label="Empresas">
-              {listaEmpresas.map((e) => (
-                <li key={e.id}>
-                  <label className={e.temAcesso ? 'desativada' : undefined}>
-                    <input
-                      type="checkbox"
-                      disabled={e.temAcesso}
-                      checked={selEmpresas.includes(e.id)}
-                      onChange={() => setSelEmpresas((l) => alternar(l, e.id))}
-                    />
-                    <span>
-                      {e.razao_social}
-                      <small className="sub">{formatarCnpj(e.cnpj)}{e.temAcesso ? ', já tem acesso' : ''}</small>
-                    </span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <SeletorEmpresas
+            empresas={empresas}
+            obras={obras}
+            selecionadas={selEmpresas}
+            aoMudar={setSelEmpresas}
+            aoNovaEmpresa={(e) => {
+              aoNovaEmpresa(e);
+              setSelEmpresas((l) => [...l, e.id]);
+            }}
+          />
         )}
 
-        {(perfil === 'tst' || perfil === 'engenharia') && (
-          <div className="campo">
-            <span>{perfil === 'tst' ? 'Obras sob responsabilidade' : 'Obras que a engenharia acompanha'}</span>
-            {perfil === 'engenharia' && (
-              <small className="dica">Só leitura: vê a integração, a conformidade documental e a medição das obras marcadas. Não vê CPF nem arquivos.</small>
-            )}
-            <ul className="lista-marcar lista-curta" aria-label="Obras">
-              {obras.map((o) => (
-                <li key={o.id}>
-                  <label>
-                    <input type="checkbox" checked={selObras.includes(o.id)} onChange={() => setSelObras((l) => alternar(l, o.id))} />
-                    <span>{o.nome}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {(perfil === 'tst' || perfil === 'engenharia') && <SeletorObras perfil={perfil} obras={obras} selecionadas={selObras} aoMudar={setSelObras} />}
 
         {perfil === 'admin' && <p className="apoio">O administrativo vê todas as obras e é o único perfil que abre os arquivos enviados.</p>}
 
@@ -301,6 +280,321 @@ function NovoAcesso({
           <button className="botao" type="submit" disabled={!valido || enviando}>
             {enviando ? 'Criando' : 'Criar acesso e gerar link'}
           </button>
+          <button className="botao botao-discreto" type="button" onClick={aoFechar}>Cancelar</button>
+        </div>
+      </form>
+    </Dialogo>
+  );
+}
+
+function alternar(lista: string[], id: string) {
+  return lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id];
+}
+
+// Lista de empresas para ligar ao acesso. "proprias" são as do próprio acesso (na edição), que podem ficar marcadas.
+function SeletorEmpresas({
+  empresas, obras, selecionadas, proprias = [], aoMudar, aoNovaEmpresa,
+}: {
+  empresas: EmpresaOpcao[];
+  obras: Obra[];
+  selecionadas: string[];
+  proprias?: string[];
+  aoMudar: (l: string[]) => void;
+  aoNovaEmpresa: (e: EmpresaOpcao) => void;
+}) {
+  const [filtro, setFiltro] = useState('');
+  const [cadastrando, setCadastrando] = useState(false);
+  const lista = useMemo(() => {
+    const t = filtro.trim().toLowerCase();
+    const d = t.replace(/\D/g, '');
+    // As marcadas ficam no topo, para não sumirem no meio da lista.
+    return empresas
+      .filter((e) => !t || e.razao_social.toLowerCase().includes(t) || (d && e.cnpj.includes(d)))
+      .sort((a, b) => Number(selecionadas.includes(b.id)) - Number(selecionadas.includes(a.id)));
+  }, [empresas, filtro, selecionadas]);
+
+  return (
+    <div className="campo">
+      <span>Empresas que este acesso representa</span>
+      <small className="dica">Cada empresa tem um único acesso. Um escritório de contabilidade pode responder por várias.</small>
+      <div className="em-linha">
+        <input type="search" placeholder="Buscar por nome ou CNPJ" value={filtro} onChange={(e) => setFiltro(e.target.value)} />
+        {!cadastrando && (
+          <button type="button" className="botao botao-secundario" onClick={() => setCadastrando(true)}>
+            Cadastrar empresa nova
+          </button>
+        )}
+      </div>
+      {cadastrando && (
+        <NovaEmpresa
+          empresas={empresas}
+          obras={obras}
+          cnpjInicial={soDigitos(filtro).length === 14 ? soDigitos(filtro) : ''}
+          aoCancelar={() => setCadastrando(false)}
+          aoCriar={(e) => {
+            setCadastrando(false);
+            setFiltro('');
+            aoNovaEmpresa(e);
+          }}
+        />
+      )}
+      <ul className="lista-marcar" aria-label="Empresas">
+        {lista.map((e) => {
+          const ocupada = e.temAcesso && !proprias.includes(e.id);
+          return (
+            <li key={e.id}>
+              <label className={ocupada ? 'desativada' : undefined}>
+                <input type="checkbox" disabled={ocupada} checked={selecionadas.includes(e.id)} onChange={() => aoMudar(alternar(selecionadas, e.id))} />
+                <span>
+                  {e.razao_social}
+                  <small className="sub">
+                    {formatarCnpj(e.cnpj)}
+                    {ocupada ? ', já tem acesso' : ''}
+                  </small>
+                </span>
+              </label>
+            </li>
+          );
+        })}
+        {lista.length === 0 && <li className="sub">Nenhuma empresa encontrada. Se for um fornecedor novo, use "Cadastrar empresa nova".</li>}
+      </ul>
+    </div>
+  );
+}
+
+function SeletorObras({ perfil, obras, selecionadas, aoMudar }: { perfil: Perfil; obras: Obra[]; selecionadas: string[]; aoMudar: (l: string[]) => void }) {
+  return (
+    <div className="campo">
+      <span>{perfil === 'tst' ? 'Obras sob responsabilidade' : 'Obras que a engenharia acompanha'}</span>
+      <small className="dica">
+        {perfil === 'tst'
+          ? 'Marque todas as obras pelas quais o TST responde. Ele valida os colaboradores e registra a integração só nelas.'
+          : 'Só leitura: vê a integração, a conformidade documental e a medição das obras marcadas. Não vê CPF nem arquivos.'}
+      </small>
+      <ul className="lista-marcar lista-curta" aria-label="Obras">
+        {obras.map((o) => (
+          <li key={o.id}>
+            <label>
+              <input type="checkbox" checked={selecionadas.includes(o.id)} onChange={() => aoMudar(alternar(selecionadas, o.id))} />
+              <span>{o.nome}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Fornecedor que ainda não está na base: cadastra a empresa e as obras onde vai trabalhar.
+function NovaEmpresa({
+  empresas, obras, cnpjInicial, aoCancelar, aoCriar,
+}: {
+  empresas: EmpresaOpcao[];
+  obras: Obra[];
+  cnpjInicial: string;
+  aoCancelar: () => void;
+  aoCriar: (e: EmpresaOpcao) => void;
+}) {
+  const [razao, setRazao] = useState('');
+  const [cnpj, setCnpj] = useState(cnpjInicial ? formatarCnpj(cnpjInicial) : '');
+  const [emailContato, setEmailContato] = useState('');
+  const [selObras, setSelObras] = useState<string[]>([]);
+  const [sub, setSub] = useState(false);
+  const [principal, setPrincipal] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const digitos = soDigitos(cnpj);
+  const cnpjOk = cnpjValido(digitos);
+  const existente = empresas.find((e) => e.cnpj === digitos);
+  const emailOk = !emailContato.trim() || EMAIL_OK.test(emailContato.trim());
+  const valido = razao.trim().length >= 3 && cnpjOk && !existente && emailOk && selObras.length > 0 && (!sub || !!principal);
+
+  async function salvar() {
+    if (!valido) return;
+    setErro(null);
+    setEnviando(true);
+    try {
+      const e = await cadastrarEmpresa({
+        razao_social: razao.trim().replace(/\s+/g, ' ').toUpperCase(),
+        cnpj: digitos,
+        email_contato: emailContato.trim().toLowerCase() || null,
+        obras: selObras,
+        subcontratada: sub,
+        empresa_principal_id: sub ? principal : null,
+      });
+      aoCriar(e);
+    } catch (er) {
+      setErro(mensagemDeErro(er as Error));
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  // Não é um <form>: fica dentro do formulário do acesso. Enter aqui cadastra a empresa, não o acesso.
+  return (
+    <div
+      className="caixa formulario formulario-largo"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+          e.preventDefault();
+          salvar();
+        }
+      }}
+    >
+      <h3 className="detalhe-subtitulo">Cadastrar empresa nova</h3>
+      <div className="grade-2">
+        <label className="campo">
+          <span>Razão social</span>
+          <input value={razao} onChange={(e) => setRazao(e.target.value)} autoComplete="off" />
+        </label>
+        <label className="campo">
+          <span>CNPJ</span>
+          <input inputMode="numeric" placeholder="00.000.000/0000-00" value={cnpj} aria-invalid={digitos.length === 14 && !cnpjOk} onChange={(e) => setCnpj(e.target.value)} />
+          {digitos.length === 14 && !cnpjOk && <small className="campo-erro">CNPJ inválido. Confira os números.</small>}
+          {existente && <small className="campo-erro">Este CNPJ já está cadastrado: {existente.razao_social}. Procure na lista.</small>}
+        </label>
+      </div>
+      <label className="campo">
+        <span>E-mail de contato da empresa (opcional)</span>
+        <input type="email" inputMode="email" value={emailContato} onChange={(e) => setEmailContato(e.target.value)} autoComplete="off" />
+        <small className="dica">Usado nas cobranças de documentos e medição. Se ficar em branco, vale o e-mail do acesso.</small>
+        {!emailOk && <small className="campo-erro">E-mail inválido.</small>}
+      </label>
+      <div className="campo">
+        <span>Obras onde vai trabalhar</span>
+        <ul className="lista-marcar lista-curta" aria-label="Obras da empresa">
+          {obras.map((o) => (
+            <li key={o.id}>
+              <label>
+                <input type="checkbox" checked={selObras.includes(o.id)} onChange={() => setSelObras((l) => alternar(l, o.id))} />
+                <span>{o.nome}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <label className="opcao">
+        <input type="checkbox" checked={sub} onChange={(e) => setSub(e.target.checked)} />
+        <span>É subcontratada de outra empresa (pede o contrato entre as partes)</span>
+      </label>
+      {sub && (
+        <label className="campo">
+          <span>Empresa principal</span>
+          <select value={principal} onChange={(e) => setPrincipal(e.target.value)}>
+            <option value="">Escolha a empresa</option>
+            {empresas.map((e) => (
+              <option key={e.id} value={e.id}>{e.razao_social}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      {erro && <p className="aviso aviso-erro" role="alert">{erro}</p>}
+      <div className="linha-botoes">
+        <button type="button" className="botao" disabled={!valido || enviando} onClick={salvar}>
+          {enviando ? 'Cadastrando' : 'Cadastrar empresa'}
+        </button>
+        <button type="button" className="botao botao-discreto" onClick={aoCancelar}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+function EditarAcesso({
+  acesso, empresas, obras, aoNovaEmpresa, aoFechar, aoSalvar,
+}: {
+  acesso: Acesso | null;
+  empresas: EmpresaOpcao[];
+  obras: Obra[];
+  aoNovaEmpresa: (e: EmpresaOpcao) => void;
+  aoFechar: () => void;
+  aoSalvar: (mensagem: string) => void;
+}) {
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [selEmpresas, setSelEmpresas] = useState<string[]>([]);
+  const [selObras, setSelObras] = useState<string[]>([]);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!acesso) return;
+    setNome(acesso.nome);
+    setEmail(acesso.email);
+    setSelEmpresas(acesso.empresas.map((e) => e.id));
+    setSelObras(acesso.obras.map((o) => o.id));
+    setErro(null);
+  }, [acesso]);
+
+  if (!acesso) return <Dialogo aberto={false} titulo="" aoFechar={aoFechar}>{null}</Dialogo>;
+  const perfil = acesso.perfil;
+  const trocaEmail = email.trim().toLowerCase() !== acesso.email.toLowerCase();
+  const valido =
+    nome.trim().length >= 2 &&
+    EMAIL_OK.test(email.trim()) &&
+    (perfil !== 'fornecedor' || selEmpresas.length > 0) &&
+    ((perfil !== 'tst' && perfil !== 'engenharia') || selObras.length > 0);
+
+  async function enviar(e: FormEvent) {
+    e.preventDefault();
+    if (!valido || !acesso) return;
+    setErro(null);
+    setEnviando(true);
+    try {
+      const r = await editarAcesso({
+        usuario_id: acesso.id,
+        nome: nome.trim(),
+        email: email.trim(),
+        empresas: perfil === 'fornecedor' ? selEmpresas : [],
+        obras: perfil === 'tst' || perfil === 'engenharia' ? selObras : [],
+      });
+      aoSalvar(
+        r.trocou_email
+          ? `Acesso de ${r.nome} atualizado. O login agora é ${r.email}; a senha continua a mesma. Se a pessoa ainda não entrou, use "Gerar link" para mandar um novo convite.`
+          : `Acesso de ${r.nome} atualizado.`,
+      );
+    } catch (er) {
+      setErro(mensagemDeErro(er as Error));
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <Dialogo aberto titulo={`Editar acesso: ${acesso.nome}`} aoFechar={aoFechar} largura="larga">
+      <form className="formulario formulario-largo" onSubmit={enviar} noValidate>
+        <p className="apoio">Perfil: {nomesPerfil[perfil]}. Para trocar o perfil, desative este acesso e crie outro.</p>
+        <div className="grade-2">
+          <label className="campo">
+            <span>{perfil === 'fornecedor' ? 'Nome do responsável ou da empresa' : 'Nome'}</span>
+            <input value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="off" />
+          </label>
+          <label className="campo">
+            <span>E-mail de acesso</span>
+            <input type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
+            {trocaEmail && <small className="dica">O login passa a ser o novo e-mail. A senha não muda.</small>}
+          </label>
+        </div>
+
+        {perfil === 'fornecedor' && (
+          <SeletorEmpresas
+            empresas={empresas}
+            obras={obras}
+            selecionadas={selEmpresas}
+            proprias={acesso.empresas.map((e) => e.id)}
+            aoMudar={setSelEmpresas}
+            aoNovaEmpresa={(e) => {
+              aoNovaEmpresa(e);
+              setSelEmpresas((l) => [...l, e.id]);
+            }}
+          />
+        )}
+        {(perfil === 'tst' || perfil === 'engenharia') && <SeletorObras perfil={perfil} obras={obras} selecionadas={selObras} aoMudar={setSelObras} />}
+        {perfil === 'admin' && <p className="dica">O administrativo vê todas as obras.</p>}
+
+        {erro && <p className="aviso aviso-erro" role="alert">{erro}</p>}
+        <div className="linha-botoes">
+          <button className="botao" type="submit" disabled={!valido || enviando}>{enviando ? 'Salvando' : 'Salvar alterações'}</button>
           <button className="botao botao-discreto" type="button" onClick={aoFechar}>Cancelar</button>
         </div>
       </form>

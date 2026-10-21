@@ -101,6 +101,39 @@ export function criarAcesso(dados: { nome: string; email: string; perfil: Perfil
   return chamarFuncaoAcesso({ acao: 'criar', ...dados });
 }
 
+export async function editarAcesso(dados: { usuario_id: string; nome: string; email: string; empresas: string[]; obras: string[] }) {
+  return (await chamarFuncaoAcesso({ acao: 'editar', ...dados })) as unknown as { trocou_email: boolean; email: string; nome: string };
+}
+
+// Empresa nova (fornecedor que ainda não estava na base), com as obras onde vai trabalhar.
+export async function cadastrarEmpresa(dados: {
+  razao_social: string;
+  cnpj: string;
+  email_contato: string | null;
+  obras: string[];
+  subcontratada: boolean;
+  empresa_principal_id: string | null;
+}): Promise<EmpresaOpcao> {
+  const id = crypto.randomUUID();
+  const { error } = await supabase.from('empresas').insert({ id, razao_social: dados.razao_social, cnpj: dados.cnpj, email_contato: dados.email_contato });
+  if (error) {
+    if ((error as { code?: string }).code === '23505') throw new Error('Este CNPJ já está cadastrado. Procure a empresa na lista.');
+    throw error;
+  }
+  if (dados.obras.length) {
+    const { error: e2 } = await supabase.from('empresas_obras').insert(
+      dados.obras.map((obra_id) => ({
+        empresa_id: id,
+        obra_id,
+        subcontratada: dados.subcontratada,
+        empresa_principal_id: dados.subcontratada ? dados.empresa_principal_id : null,
+      })),
+    );
+    if (e2) throw e2;
+  }
+  return { id, razao_social: dados.razao_social, cnpj: dados.cnpj, temAcesso: false };
+}
+
 export function gerarLinkAcesso(usuarioId: string) {
   return chamarFuncaoAcesso({ acao: 'link', usuario_id: usuarioId });
 }

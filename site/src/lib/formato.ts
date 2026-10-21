@@ -37,6 +37,24 @@ export function erroDatasColaborador(admissao: string, nascimento: string): stri
   return null;
 }
 
+export function cnpjValido(valor: string): boolean {
+  const c = soDigitos(valor);
+  if (c.length !== 14 || /^(\d)\1+$/.test(c)) return false;
+  const dv = (base: string) => {
+    let soma = 0;
+    let peso = base.length - 7;
+    for (const n of base) {
+      soma += Number(n) * peso--;
+      if (peso < 2) peso = 9;
+    }
+    const r = soma % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  const d1 = dv(c.slice(0, 12));
+  const d2 = dv(c.slice(0, 12) + d1);
+  return c.endsWith(`${d1}${d2}`);
+}
+
 export function formatarCpf(cpf: string | null | undefined): string {
   if (!cpf) return '';
   return cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');

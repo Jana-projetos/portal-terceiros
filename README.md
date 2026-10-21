@@ -76,6 +76,12 @@ Os demais acessos (fornecedores, TSTs e outros do administrativo) são criados n
 
 O link vale pelo prazo definido em **Authentication > Sign In / Providers > Email > Email OTP Expiration**. O padrão é 1 hora; para dar tempo de o fornecedor abrir o e-mail, o recomendado é 86400 segundos (24 horas).
 
+### Editar acessos e cadastrar fornecedor novo
+
+Em **Acessos**, o botão **Editar** de cada linha corrige o nome e o e-mail do acesso e troca as obras (TST e engenharia, quantas forem) ou as empresas (fornecedor). Trocar o e-mail troca o login; a senha continua a mesma, e quem ainda não entrou precisa de um novo link ("Gerar link"). O perfil não muda pela edição: para isso, desative e crie outro acesso. Cada alteração fica no histórico.
+
+Quando o fornecedor ainda não está na base, use **Cadastrar empresa nova** dentro de **Novo acesso** (ou da edição): razão social, CNPJ (conferido pelos dígitos), e-mail de contato para as cobranças, obras onde vai trabalhar e, se for o caso, a empresa principal da qual é subcontratada. A empresa já entra marcada para o acesso.
+
 ### Publicar a função de acessos
 
 A função fica em `supabase/functions/gerenciar-acesso` e é publicada com o Supabase CLI (`supabase functions deploy gerenciar-acesso --no-verify-jwt`). Ela confere sozinha se quem chama é administrativo ativo e usa a chave de serviço, que só existe no ambiente do Supabase.
