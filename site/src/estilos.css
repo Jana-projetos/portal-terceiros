@@ -1832,3 +1832,15 @@ a.celula:hover {
 .botao-mais {
   margin-top: 0.75rem;
 }
+
+button.celula {
+  border: 0;
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+button.celula:hover {
+  outline: 2px solid var(--petroleo);
+  outline-offset: 1px;
+}

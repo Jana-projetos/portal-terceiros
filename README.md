@@ -34,6 +34,7 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261021_013_lista_integracao_obra_instrutor.sql` | Lista de presença com o nome da obra e rótulo Instrutor(a) |
 | `20261021_014_perfil_engenharia.sql` | Novo perfil de acesso: engenharia da obra |
 | `20261021_015_painel_obra.sql` | Painel da obra (só leitura): colaboradores, pendências de documento, integração e medição das obras do acesso, sem CPF e sem arquivos |
+| `20261021_016_painel_obra_historico.sql` | Painel da obra com o histórico da medição, incluindo os meses da planilha das empresas que trabalham na obra |
 
 Os arquivos usados para carregar as planilhas `CONTROLE_DE_INTEGRAÇÃO` e de medição mensal não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 
@@ -133,6 +134,7 @@ Acompanhamento da obra para a engenharia, também aberto ao TST e ao administrat
 
 - **Resumo:** liberados para trabalhar e aguardando liberação, conformidade documental (liberados sem documento vencido ou faltando), integração em dia e pagamentos do mês.
 - **Medição, pagamento das empresas:** por mês trabalhado, cada empresa com colaborador liberado ou com medição aparece como *Liberar* (medição aprovada), *Reter* (passou do dia 30, ou da data combinada, sem aprovação) ou *Aguardar* (no prazo até o dia 25, na tolerância até o dia 30, com data combinada ou em conferência na Emais), com o que falta.
+- **Histórico da medição por empresa:** a mesma grade empresa × mês do administrativo. Os meses da planilha (março a agosto de 2026) não tinham obra e aparecem para as empresas que têm ou tiveram colaborador na obra; medições de outras obras da empresa ficam de fora. Clicando na célula, o mês abre no quadro de pagamento.
 - **Conformidade documental por empresa:** liberados, com pendência, em dia, vencendo em 30 dias e aguardando liberação. Clicando na empresa aparecem os colaboradores e os documentos pendentes.
 - **Integração:** turmas agendadas e realizadas nos últimos 90 dias e liberados sem integração, vencida ou vencendo em 30 dias.
 - **Colaboradores na obra:** lista com busca e filtros (com pendência, sem integração em dia, aguardando liberação).

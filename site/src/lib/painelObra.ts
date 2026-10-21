@@ -26,6 +26,9 @@ export type MedicaoObra = {
   id: string;
   empresa_id: string;
   empresa: string;
+  cnpj: string;
+  obra: string | null; // vazio nas medições da planilha (março a agosto de 2026)
+  origem: 'portal' | 'migracao';
   competencia: string;
   prazo: string;
   tolerancia: string;
@@ -107,6 +110,10 @@ export function toleranciaDe(competencia: string): string {
   const ultimo = new Date(Date.UTC(a, m, 0)).getUTCDate();
   return `${mes.slice(0, 8)}${String(Math.min(30, ultimo)).padStart(2, '0')}`;
 }
+
+// Primeiro mês com medição feita no portal. Antes disso só há o histórico da planilha,
+// então uma empresa sem medição nesses meses não aparece como "não enviada".
+export const INICIO_MEDICAO_PORTAL = '2026-09-01';
 
 // Meses para escolher no painel: os que têm medição na obra e o mês anterior ao atual.
 export function mesesDoPainel(medicoes: MedicaoObra[], hoje = hojeIso()): string[] {

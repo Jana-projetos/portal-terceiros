@@ -3,11 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import { Pagina, Mensagem } from '../componentes/Pagina';
 import { Carregando } from '../componentes/Carregando';
 import { Cartao } from '../componentes/Graficos';
+import { GradeMedicao } from '../componentes/GradeMedicao';
 import { mensagemDeErro } from '../lib/supabase';
 import { data, diasAte, rotuloStatus } from '../lib/formato';
 import { mesPorExtenso, rotuloStatusMedicao, seloMedicao } from '../lib/medicao';
 import {
-  lerObrasDoPainel, lerPainelObra, mesesDoPainel, pagamentoDe, situacaoIntegracao,
+  INICIO_MEDICAO_PORTAL, lerObrasDoPainel, lerPainelObra, mesesDoPainel, pagamentoDe, situacaoIntegracao,
   type ColaboradorObra, type MedicaoObra, type PainelObra as Painel, type PendenciaDoc,
 } from '../lib/painelObra';
 
@@ -102,10 +103,16 @@ function Conteudo({ painel }: { painel: Painel }) {
     const doMes = new Map<string, MedicaoObra>(painel.medicoes.filter((m) => m.competencia === mes).map((m) => [m.empresa_id, m]));
     const comLiberado = new Set(liberados.map((c) => c.empresa_id));
     return empresas
-      .filter((e) => doMes.has(e.id) || comLiberado.has(e.id))
+      .filter((e) => doMes.has(e.id) || (comLiberado.has(e.id) && mes >= INICIO_MEDICAO_PORTAL))
       .map((e) => ({ empresa: e, medicao: doMes.get(e.id) ?? null, pagamento: pagamentoDe(doMes.get(e.id) ?? null, mes) }))
       .sort((a, b) => ordemPagamento[a.pagamento.acao] - ordemPagamento[b.pagamento.acao] || a.empresa.nome.localeCompare(b.empresa.nome, 'pt-BR'));
   }, [painel.medicoes, empresas, liberados, mes]);
+  const itensGrade = useMemo(() => painel.medicoes.map((m) => ({ ...m, pendentes: m.itens_pendentes.length })), [painel.medicoes]);
+  const verMes = (competencia: string) => {
+    setMes(competencia);
+    document.getElementById('medicao-mes')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const liberar = linhasMedicao.filter((l) => l.pagamento.acao === 'liberar').length;
   const reter = linhasMedicao.filter((l) => l.pagamento.acao === 'reter').length;
   const aguardar = linhasMedicao.length - liberar - reter;
@@ -166,7 +173,7 @@ function Conteudo({ painel }: { painel: Painel }) {
         />
       </div>
 
-      <section className="bloco">
+      <section className="bloco" id="medicao-mes">
         <div className="barra-lista">
           <h2 className="bloco-titulo">Medição: pagamento das empresas</h2>
           <label className="campo campo-compacto">
@@ -230,6 +237,23 @@ function Conteudo({ painel }: { painel: Painel }) {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="bloco">
+        <h2 className="bloco-titulo">Histórico da medição por empresa</h2>
+        <p className="dica">
+          Situação de cada empresa mês a mês, como na planilha de controle. De março a agosto de 2026 os meses vêm da planilha, que não separava por obra;
+          aparecem aqui as empresas que têm ou tiveram colaborador nesta obra. Clique numa célula para ver o mês no quadro de pagamento.
+        </p>
+        <GradeMedicao
+          itens={itensGrade}
+          textoAjuda="Passe o mouse na célula para ver a origem e os itens pendentes."
+          celula={(m, conteudo, props) => (
+            <button type="button" {...props} onClick={() => verMes(m.competencia)}>
+              {conteudo}
+            </button>
+          )}
+        />
       </section>
 
       <section className="bloco">
