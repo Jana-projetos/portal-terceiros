@@ -30,6 +30,7 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261019_009_medicao_remover_colaborador.sql` | Fornecedor tira da medição quem não trabalhou no mês (aplicada à parte, pelo SQL Editor) |
 | `20261019_010_cobrancas.sql` | Registro das cobranças por e-mail já abertas ou dispensadas e destinatários da engenharia de cada obra |
 | `20261019_011_cobranca_tres_passos.sql` | Tolerância até o dia 30, data combinada com o fornecedor, novos tipos de cobrança e assinatura dos e-mails |
+| `20261021_012_modelo_lista_integracao.sql` | Documentos controlados: texto, data e revisão da lista de presença da integração |
 
 Os arquivos usados para carregar as planilhas `CONTROLE_DE_INTEGRAÇÃO` e de medição mensal não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 
@@ -81,6 +82,16 @@ Na **Análise de documentos**, "Baixar todos" (ou "Baixar desta empresa") junta 
 - quando um documento tem mais de um arquivo, entra "(1 de 2)", "(2 de 2)".
 
 O download individual usa o mesmo nome. O prazo de 30 dias para apagar o arquivo começa no primeiro download.
+
+## Lista de presença da integração (documento controlado)
+
+A lista que o TST baixa em **Integração** segue o documento controlado da Segurança do Trabalho **DECLARAÇÃO DE RECEBIMENTO DE TREINAMENTO** (data 01.08.2025, revisão 03), em A4 retrato:
+
+- uma folha por empresa, com 7 linhas de assinatura; acima disso, mais folhas, com "PAGINA: x de y";
+- a declaração cita a obra ("EMAIS" + nome da obra), e o instrutor sai no rodapé com a função;
+- depois de confirmada a presença, a lista sai só com os presentes.
+
+O texto, a data e a revisão ficam na tabela `modelos_documento` (código `lista_presenca_integracao`). Numa nova revisão, basta atualizar essa linha no Supabase: o layout é o mesmo e o site não precisa mudar. No texto, `**...**` é negrito, `_..._` é itálico e `{CONTRATANTE}` vira "EMAIS" + obra.
 
 ## Medição mensal (F.48)
 

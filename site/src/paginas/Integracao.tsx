@@ -7,7 +7,7 @@ import { mensagemDeErro } from '../lib/supabase';
 import { data, diasAte, hojeIso } from '../lib/formato';
 import { lerAlocacoes, type AlocacaoResumo } from '../lib/admin';
 import {
-  baixarListaPresenca, cancelarIntegracao, concluirIntegracao, criarIntegracao, lerCpfs, lerIntegracoes, type Integracao,
+  baixarListaPresenca, cancelarIntegracao, concluirIntegracao, criarIntegracao, lerIntegracoes, type Integracao,
 } from '../lib/integracao';
 
 const CHAVE_OBRA = 'portal-terceiros:obra-integracao';
@@ -120,9 +120,8 @@ export function Integracao() {
 
   async function participantesDa(t: Integracao) {
     const alocs = t.integracoes_participantes.map((p) => ({ p, a: porId.get(p.alocacao_id) })).filter((x) => x.a);
-    const cpfs = await lerCpfs(alocs.map((x) => x.a!.colaborador_id));
     return alocs
-      .map(({ p, a }) => ({ nome: a!.colaborador, cpf: cpfs.get(a!.colaborador_id) ?? null, empresa: a!.empresa, funcao: a!.funcao, presente: p.presente }))
+      .map(({ p, a }) => ({ nome: a!.colaborador, empresa: a!.empresa, funcao: a!.funcao, presente: p.presente }))
       .sort((x, y) => x.empresa.localeCompare(y.empresa, 'pt-BR') || x.nome.localeCompare(y.nome, 'pt-BR'));
   }
 
@@ -283,7 +282,7 @@ export function Integracao() {
                   <input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex.: sala de integração do canteiro" />
                 </label>
                 <label className="campo">
-                  <span>Responsável pela integração</span>
+                  <span>Instrutor (técnico de segurança)</span>
                   <input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} />
                 </label>
                 <button className="botao" type="submit" disabled={selecao.size === 0 || !responsavel.trim() || !dia || criando}>
