@@ -25,6 +25,18 @@ export function diasAte(isoData: string): number {
   return Math.round((Date.UTC(a, m - 1, d) - Date.UTC(ha, hm - 1, hd)) / 86400000);
 }
 
+// Confere as datas do cadastro do colaborador (as mesmas regras do banco). Devolve o erro ou null.
+export function erroDatasColaborador(admissao: string, nascimento: string): string | null {
+  const hoje = hojeIso();
+  const [a, m, d] = hoje.split('-').map(Number);
+  const limiteNascimento = `${a - 14}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  if (nascimento && (nascimento < '1930-01-01' || nascimento > limiteNascimento)) return 'Data de nascimento inválida: confira o ano.';
+  if (admissao && admissao < '1960-01-01') return 'Data de admissão inválida: confira o ano.';
+  if (admissao && admissao > somarDias(hoje, 90)) return 'Data de admissão muito à frente: confira a data.';
+  if (admissao && nascimento && admissao <= nascimento) return 'A admissão precisa ser depois do nascimento.';
+  return null;
+}
+
 export function formatarCpf(cpf: string | null | undefined): string {
   if (!cpf) return '';
   return cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');

@@ -88,6 +88,8 @@ export type MeuColaborador = {
   funcao_texto: string | null;
   situacao: 'ativo' | 'demitido' | 'desistente';
   pendencia_cadastro: string | null;
+  data_admissao: string | null;
+  data_nascimento: string | null;
   funcoes: { nome: string } | null;
 };
 
@@ -95,10 +97,15 @@ export async function lerMeusColaboradores(): Promise<MeuColaborador[]> {
   return lerTudo<MeuColaborador>((inicio, fim) =>
     supabase
       .from('colaboradores')
-      .select('id, empresa_id, nome, cpf, funcao_texto, situacao, pendencia_cadastro, funcoes(nome)')
+      .select('id, empresa_id, nome, cpf, funcao_texto, situacao, pendencia_cadastro, data_admissao, data_nascimento, funcoes(nome)')
       .order('nome')
       .range(inicio, fim) as unknown as PromiseLike<{ data: MeuColaborador[] | null; error: unknown }>,
   );
+}
+
+export async function salvarDatasColaborador(id: string, data_admissao: string | null, data_nascimento: string | null) {
+  const { error } = await supabase.from('colaboradores').update({ data_admissao, data_nascimento }).eq('id', id);
+  if (error) throw error;
 }
 
 export async function criarColaborador(dados: {
@@ -107,6 +114,8 @@ export async function criarColaborador(dados: {
   cpf: string;
   funcao_id: string | null;
   funcao_texto: string | null;
+  data_admissao: string;
+  data_nascimento: string;
   obras: string[];
 }): Promise<string> {
   const id = crypto.randomUUID();
@@ -117,6 +126,8 @@ export async function criarColaborador(dados: {
     cpf: dados.cpf,
     funcao_id: dados.funcao_id,
     funcao_texto: dados.funcao_texto,
+    data_admissao: dados.data_admissao,
+    data_nascimento: dados.data_nascimento,
   });
   if (error) {
     if ((error as { code?: string }).code === '23505') throw new Error('Este CPF já está cadastrado nesta empresa. Procure o colaborador na lista.');

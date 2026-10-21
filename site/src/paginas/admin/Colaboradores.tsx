@@ -6,7 +6,7 @@ import { Dialogo } from '../../componentes/Dialogo';
 import { Carregando } from '../../componentes/Carregando';
 import { mensagemDeErro } from '../../lib/supabase';
 import {
-  cpfValido, data, formatarCpf, hojeIso, ordemSituacao, rotuloSituacao, rotuloStatus, soDigitos,
+  cpfValido, data, erroDatasColaborador, formatarCpf, hojeIso, ordemSituacao, rotuloSituacao, rotuloStatus, soDigitos,
 } from '../../lib/formato';
 import {
   aprovarAlocacao, devolverAlocacaoTst, excecoesNovas, lerAlocacoes, lerBaseTreinamentos, lerColaborador, lerDevolucaoTst, lerExcecoes,
@@ -278,6 +278,8 @@ function Detalhe({ ehAdmin, alocacao, aoFechar, aoMudar }: { ehAdmin: boolean; a
           <div><dt>Obra</dt><dd>{alocacao.obra}</dd></div>
           <div><dt>Função</dt><dd>{colab?.funcoes?.nome ?? colab?.funcao_texto ?? alocacao.funcao ?? 'Não informada'}</dd></div>
           <div><dt>CPF</dt><dd>{colab ? formatarCpf(colab.cpf) || 'Não informado' : ''}</dd></div>
+          <div><dt>Admissão</dt><dd>{colab ? data(colab.data_admissao) || 'Não informada' : ''}</dd></div>
+          <div><dt>Nascimento</dt><dd>{colab ? data(colab.data_nascimento) || 'Não informada' : ''}</dd></div>
           <div><dt>Situação</dt><dd><span className={`selo selo-${alocacao.status}`}>{rotuloStatus[alocacao.status]}</span></dd></div>
           <div><dt>Integração</dt><dd>{alocacao.data_integracao ? data(alocacao.data_integracao) : 'Não registrada'}</dd></div>
         </dl>
@@ -439,7 +441,14 @@ function Detalhe({ ehAdmin, alocacao, aoFechar, aoMudar }: { ehAdmin: boolean; a
 }
 
 type Treinamentos = { exigidos: Set<string>; daFuncao: Set<string>; todos: string[]; motivo: string };
-type DadosCadastro = { nome: string; cpf: string | null; pendencia_cadastro: string | null; funcao_id: string | null };
+type DadosCadastro = {
+  nome: string;
+  cpf: string | null;
+  pendencia_cadastro: string | null;
+  funcao_id: string | null;
+  data_admissao: string | null;
+  data_nascimento: string | null;
+};
 
 function EdicaoCadastro({
   colaborador, excecoes, aoCancelar, aoSalvar,
@@ -453,6 +462,9 @@ function EdicaoCadastro({
   const [cpf, setCpf] = useState(formatarCpf(colaborador.cpf));
   const [conferido, setConferido] = useState(true);
   const [funcaoId, setFuncaoId] = useState(colaborador.funcao_id ?? '');
+  const [admissao, setAdmissao] = useState(colaborador.data_admissao ?? '');
+  const [nascimento, setNascimento] = useState(colaborador.data_nascimento ?? '');
+  const erroDatas = erroDatasColaborador(admissao, nascimento);
   const [base, setBase] = useState<BaseTreinamentos | null>(null);
   const [erroBase, setErroBase] = useState<string | null>(null);
   // Marcação do formulário: começa com a regra atual (função + exceções).
@@ -478,7 +490,7 @@ function EdicaoCadastro({
   const daFuncao = base?.porFuncao.get(funcaoId) ?? new Set<string>();
   const mudancas = base && exigidos ? excecoesNovas(exigidos, daFuncao, excecoes, todos) : { gravar: [], apagar: [] };
   const precisaMotivo = mudancas.gravar.length > 0;
-  const podeSalvar = cpfOk && nome.trim().length >= 2 && !!exigidos && (!precisaMotivo || motivo.trim().length >= 5);
+  const podeSalvar = cpfOk && !erroDatas && nome.trim().length >= 2 && !!exigidos && (!precisaMotivo || motivo.trim().length >= 5);
 
   function trocarFuncao(novaId: string) {
     // Ao trocar a função, as NRs passam a seguir a nova função (as exceções marcadas à mão continuam).
@@ -508,6 +520,8 @@ function EdicaoCadastro({
         cpf: digitos || null,
         pendencia_cadastro: conferido && digitos ? null : colaborador.pendencia_cadastro,
         funcao_id: funcaoId || null,
+        data_admissao: admissao || null,
+        data_nascimento: nascimento || null,
       },
       { exigidos, daFuncao, todos, motivo: motivo.trim() },
     );
@@ -526,7 +540,16 @@ function EdicaoCadastro({
           <input inputMode="numeric" value={cpf} aria-invalid={!cpfOk} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" />
           {!cpfOk && <small className="campo-erro">CPF inválido. Confira os números.</small>}
         </label>
+        <label className="campo">
+          <span>Data de admissão (registro)</span>
+          <input type="date" value={admissao} onChange={(e) => setAdmissao(e.target.value)} />
+        </label>
+        <label className="campo">
+          <span>Data de nascimento</span>
+          <input type="date" value={nascimento} onChange={(e) => setNascimento(e.target.value)} />
+        </label>
       </div>
+      {erroDatas && <small className="campo-erro">{erroDatas}</small>}
       {colaborador.pendencia_cadastro && (
         <label className="opcao">
           <input type="checkbox" checked={conferido} onChange={(e) => setConferido(e.target.checked)} />

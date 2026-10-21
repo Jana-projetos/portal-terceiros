@@ -335,20 +335,25 @@ export type Colaborador = {
   situacao: 'ativo' | 'demitido' | 'desistente';
   pendencia_cadastro: string | null;
   funcao_id: string | null;
+  data_admissao: string | null;
+  data_nascimento: string | null;
   funcoes: { nome: string } | null;
 };
 
 export async function lerColaborador(id: string): Promise<Colaborador> {
   const { data, error } = await supabase
     .from('colaboradores')
-    .select('id, nome, cpf, funcao_texto, situacao, pendencia_cadastro, funcao_id, funcoes(nome)')
+    .select('id, nome, cpf, funcao_texto, situacao, pendencia_cadastro, funcao_id, data_admissao, data_nascimento, funcoes(nome)')
     .eq('id', id)
     .single();
   if (error) throw error;
   return data as unknown as Colaborador;
 }
 
-export async function salvarCadastro(id: string, dados: { nome: string; cpf: string | null; pendencia_cadastro: string | null; funcao_id?: string | null }) {
+export async function salvarCadastro(
+  id: string,
+  dados: { nome: string; cpf: string | null; pendencia_cadastro: string | null; funcao_id?: string | null; data_admissao?: string | null; data_nascimento?: string | null },
+) {
   const { error } = await supabase.from('colaboradores').update(dados).eq('id', id);
   if (error) {
     if ((error as { code?: string }).code === '23505') throw new Error('Já existe outro colaborador desta empresa com este CPF.');

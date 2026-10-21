@@ -5,8 +5,8 @@ import { Dialogo } from '../../componentes/Dialogo';
 import { Carregando } from '../../componentes/Carregando';
 import { EnvioDocumento, type PedidoDeEnvio } from '../../componentes/EnvioDocumento';
 import { mensagemDeErro } from '../../lib/supabase';
-import { cpfValido, formatarCpf, ordemSituacao, rotuloStatus, soDigitos } from '../../lib/formato';
-import { alocarEmObra, criarColaborador, enviarParaAnalise, informarDesligamento, lerFuncoes, type MeuColaborador, type MinhaEmpresa } from '../../lib/fornecedor';
+import { cpfValido, data, erroDatasColaborador, formatarCpf, ordemSituacao, rotuloStatus, soDigitos } from '../../lib/formato';
+import { alocarEmObra, criarColaborador, enviarParaAnalise, informarDesligamento, lerFuncoes, salvarDatasColaborador, type MeuColaborador, type MinhaEmpresa } from '../../lib/fornecedor';
 import { documentosDoColaborador, podeEnviarParaAnalise, travasDaAlocacao, useFornecedor } from '../../lib/useFornecedor';
 import { ItemPendencia } from './OQueFalta';
 
@@ -138,6 +138,8 @@ function NovoColaborador({
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
   const [funcao, setFuncao] = useState('');
+  const [admissao, setAdmissao] = useState('');
+  const [nascimento, setNascimento] = useState('');
   const [obras, setObras] = useState<string[]>([]);
   const [funcoes, setFuncoes] = useState<{ id: string; nome: string }[]>([]);
   const [enviando, setEnviando] = useState(false);
@@ -149,6 +151,8 @@ function NovoColaborador({
     setNome('');
     setCpf('');
     setFuncao('');
+    setAdmissao('');
+    setNascimento('');
     setObras([]);
     setErro(null);
     if (funcoes.length === 0) lerFuncoes().then(setFuncoes).catch(() => undefined);
@@ -158,7 +162,8 @@ function NovoColaborador({
   const digitos = soDigitos(cpf);
   const cpfOk = cpfValido(digitos);
   const funcaoCadastrada = funcoes.find((f) => f.nome.toLowerCase() === funcao.trim().toLowerCase());
-  const valido = !!empresa && nome.trim().split(/\s+/).length >= 2 && cpfOk && funcao.trim().length >= 3;
+  const erroDatas = erroDatasColaborador(admissao, nascimento);
+  const valido = !!empresa && nome.trim().split(/\s+/).length >= 2 && cpfOk && funcao.trim().length >= 3 && !!admissao && !!nascimento && !erroDatas;
 
   async function enviar(e: FormEvent) {
     e.preventDefault();
@@ -173,6 +178,8 @@ function NovoColaborador({
         cpf: digitos,
         funcao_id: funcaoCadastrada?.id ?? null,
         funcao_texto: funcao.trim().toUpperCase(),
+        data_admissao: admissao,
+        data_nascimento: nascimento,
         obras,
       });
       aoCriar(id, nomeFinal);
@@ -218,6 +225,17 @@ function NovoColaborador({
               : 'Escolha da lista. A função define quais NRs são obrigatórias.'}
           </small>
         </label>
+        <div className="grade-2">
+          <label className="campo">
+            <span>Data de admissão (registro)</span>
+            <input type="date" value={admissao} onChange={(e) => setAdmissao(e.target.value)} />
+          </label>
+          <label className="campo">
+            <span>Data de nascimento</span>
+            <input type="date" value={nascimento} onChange={(e) => setNascimento(e.target.value)} />
+          </label>
+        </div>
+        {erroDatas && <small className="campo-erro">{erroDatas}</small>}
         {empresa && (
           <div className="campo">
             <span>Obras onde vai trabalhar</span>
@@ -299,7 +317,16 @@ function DetalheColaborador({
             <div><dt>Empresa</dt><dd>{empresa?.razao_social}</dd></div>
             <div><dt>CPF</dt><dd>{formatarCpf(colaborador.cpf) || 'Não informado'}</dd></div>
             <div><dt>Função</dt><dd>{colaborador.funcoes?.nome ?? colaborador.funcao_texto ?? 'Não informada'}</dd></div>
+            <div><dt>Admissão</dt><dd>{data(colaborador.data_admissao) || 'Não informada'}</dd></div>
+            <div><dt>Nascimento</dt><dd>{data(colaborador.data_nascimento) || 'Não informada'}</dd></div>
           </dl>
+          {ativo && (
+            <DatasDoCadastro
+              key={colaborador.id}
+              colaborador={colaborador}
+              aoSalvar={(adm, nasc) => agir('datas', () => salvarDatasColaborador(colaborador.id, adm, nasc), 'Datas do cadastro atualizadas.')}
+            />
+          )}
           {!ativo && <p className="aviso aviso-alerta">Colaborador desligado. As alocações nas obras foram encerradas.</p>}
           {erro && <p className="aviso aviso-erro" role="alert">{erro}</p>}
 
@@ -409,5 +436,54 @@ function DetalheColaborador({
         }}
       />
     </>
+  );
+}
+
+// Admissão e nascimento: o fornecedor completa quando falta e corrige quando está errado.
+function DatasDoCadastro({ colaborador, aoSalvar }: { colaborador: MeuColaborador; aoSalvar: (adm: string, nasc: string) => void }) {
+  const faltam = !colaborador.data_admissao || !colaborador.data_nascimento;
+  const [aberto, setAberto] = useState(false);
+  const [admissao, setAdmissao] = useState(colaborador.data_admissao ?? '');
+  const [nascimento, setNascimento] = useState(colaborador.data_nascimento ?? '');
+  const erro = erroDatasColaborador(admissao, nascimento);
+
+  if (!aberto) {
+    return faltam ? (
+      <p className="aviso aviso-alerta aviso-faixa">
+        <span>Complete o cadastro: falta a data de {!colaborador.data_admissao && !colaborador.data_nascimento ? 'admissão e de nascimento' : !colaborador.data_admissao ? 'admissão' : 'nascimento'}.</span>
+        <button type="button" className="botao botao-pequeno" onClick={() => setAberto(true)}>Informar datas</button>
+      </p>
+    ) : (
+      <button type="button" className="botao botao-discreto botao-pequeno" onClick={() => setAberto(true)}>Corrigir datas</button>
+    );
+  }
+  return (
+    <form
+      className="formulario formulario-largo caixa"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (admissao && nascimento && !erro) {
+          aoSalvar(admissao, nascimento);
+          setAberto(false);
+        }
+      }}
+      noValidate
+    >
+      <div className="grade-2">
+        <label className="campo">
+          <span>Data de admissão (registro)</span>
+          <input type="date" value={admissao} onChange={(e) => setAdmissao(e.target.value)} />
+        </label>
+        <label className="campo">
+          <span>Data de nascimento</span>
+          <input type="date" value={nascimento} onChange={(e) => setNascimento(e.target.value)} />
+        </label>
+      </div>
+      {erro && <small className="campo-erro">{erro}</small>}
+      <div className="linha-botoes">
+        <button className="botao" type="submit" disabled={!admissao || !nascimento || !!erro}>Salvar datas</button>
+        <button className="botao botao-discreto" type="button" onClick={() => setAberto(false)}>Cancelar</button>
+      </div>
+    </form>
   );
 }

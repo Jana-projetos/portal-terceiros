@@ -36,6 +36,7 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261021_015_painel_obra.sql` | Painel da obra (só leitura): colaboradores, pendências de documento, integração e medição das obras do acesso, sem CPF e sem arquivos |
 | `20261021_016_painel_obra_historico.sql` | Painel da obra com o histórico da medição, incluindo os meses da planilha das empresas que trabalham na obra |
 | `20261021_017_treinamentos_por_colaborador.sql` | Exceção da NR por colaborador: o administrativo torna uma NR obrigatória ou não obrigatória fora da regra da função, com motivo registrado no histórico |
+| `20261021_018_colaborador_datas.sql` | Data de admissão (registro) e data de nascimento no cadastro do colaborador, com conferência das datas |
 
 Os arquivos usados para carregar as planilhas `CONTROLE_DE_INTEGRAÇÃO` e de medição mensal não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 
@@ -128,6 +129,10 @@ Quando há e-mails prontos, aparece um aviso no topo do portal e um contador no 
 O botão usa o programa de e-mail padrão do Windows. Para ser o Outlook: **Configurações > Aplicativos > Aplicativos padrão > Outlook**, e em **MAILTO** escolher Outlook.
 
 O envio automático (sem abrir o Outlook) depende de autorização do administrador do Microsoft 365 da Emais; o registro das cobranças já está pronto para isso.
+
+## Cadastro do colaborador
+
+Nome, CPF, função, data de admissão (registro) e data de nascimento. As duas datas foram carregadas das colunas DATA DE REGISTRO e DATA DE NASCIMENTO da planilha `CONTROLE_DE_INTEGRAÇÃO` (a carga fica fora do repositório, porque tem dados pessoais). No cadastro de um colaborador novo o fornecedor é obrigado a informar as duas; nos antigos sem data, o detalhe do colaborador pede para completar. O administrativo também corrige em **Editar cadastro**. O banco recusa nascimento com menos de 14 anos, admissão antes do nascimento ou mais de 90 dias à frente. O Painel da obra (engenharia) não mostra essas datas.
 
 ## Treinamentos (NR) por colaborador
 
