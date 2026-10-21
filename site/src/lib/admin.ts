@@ -334,24 +334,85 @@ export type Colaborador = {
   funcao_texto: string | null;
   situacao: 'ativo' | 'demitido' | 'desistente';
   pendencia_cadastro: string | null;
+  funcao_id: string | null;
   funcoes: { nome: string } | null;
 };
 
 export async function lerColaborador(id: string): Promise<Colaborador> {
   const { data, error } = await supabase
     .from('colaboradores')
-    .select('id, nome, cpf, funcao_texto, situacao, pendencia_cadastro, funcoes(nome)')
+    .select('id, nome, cpf, funcao_texto, situacao, pendencia_cadastro, funcao_id, funcoes(nome)')
     .eq('id', id)
     .single();
   if (error) throw error;
   return data as unknown as Colaborador;
 }
 
-export async function salvarCadastro(id: string, dados: { nome: string; cpf: string | null; pendencia_cadastro: string | null }) {
+export async function salvarCadastro(id: string, dados: { nome: string; cpf: string | null; pendencia_cadastro: string | null; funcao_id?: string | null }) {
   const { error } = await supabase.from('colaboradores').update(dados).eq('id', id);
   if (error) {
     if ((error as { code?: string }).code === '23505') throw new Error('Já existe outro colaborador desta empresa com este CPF.');
     throw error;
+  }
+}
+
+// ---------------------------------------------------------------- Treinamentos (NR) por colaborador
+// A função define as NRs obrigatórias. O administrativo pode abrir exceção para um colaborador:
+// tornar obrigatória uma NR que a função não pede, ou tirar uma que a função pede. Sempre com motivo.
+
+export type Excecao = { tipo_codigo: string; exige: boolean; motivo: string | null; incluido_em: string };
+
+export type BaseTreinamentos = {
+  tipos: { codigo: string; nome: string }[];
+  porFuncao: Map<string, Set<string>>; // funcao_id -> NRs exigidas
+  funcoes: { id: string; nome: string }[];
+};
+
+export async function lerBaseTreinamentos(): Promise<BaseTreinamentos> {
+  const [{ data: tipos, error: e1 }, { data: fd, error: e2 }, { data: funcoes, error: e3 }] = await Promise.all([
+    supabase.from('tipos_documento').select('codigo, nome').eq('depende_da_funcao', true).eq('ativo', true).order('ordem'),
+    supabase.from('funcoes_documentos').select('funcao_id, tipo_codigo').limit(5000),
+    supabase.from('funcoes').select('id, nome').order('nome'),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+  if (e3) throw e3;
+  const porFuncao = new Map<string, Set<string>>();
+  (fd ?? []).forEach((r: { funcao_id: string; tipo_codigo: string }) => {
+    porFuncao.set(r.funcao_id, (porFuncao.get(r.funcao_id) ?? new Set()).add(r.tipo_codigo));
+  });
+  return { tipos: (tipos ?? []) as BaseTreinamentos['tipos'], porFuncao, funcoes: (funcoes ?? []) as BaseTreinamentos['funcoes'] };
+}
+
+export async function lerExcecoes(colaboradorId: string): Promise<Excecao[]> {
+  const { data, error } = await supabase
+    .from('colaboradores_documentos_extras')
+    .select('tipo_codigo, exige, motivo, incluido_em')
+    .eq('colaborador_id', colaboradorId);
+  if (error) throw error;
+  return (data ?? []) as Excecao[];
+}
+
+// Grava só o que difere da função; o que voltou a seguir a função perde a exceção.
+// Exceção que já existia e não mudou fica como está (com o motivo e a data de antes).
+export function excecoesNovas(exigidos: Set<string>, daFuncao: Set<string>, existentes: Excecao[], todos: string[]) {
+  const atual = new Map(existentes.map((e) => [e.tipo_codigo, e.exige]));
+  const gravar = todos.filter((c) => exigidos.has(c) !== daFuncao.has(c) && atual.get(c) !== exigidos.has(c));
+  const apagar = todos.filter((c) => exigidos.has(c) === daFuncao.has(c) && atual.has(c));
+  return { gravar, apagar };
+}
+
+export async function salvarTreinamentos(colaboradorId: string, exigidos: Set<string>, daFuncao: Set<string>, existentes: Excecao[], todos: string[], motivo: string) {
+  const { gravar, apagar } = excecoesNovas(exigidos, daFuncao, existentes, todos);
+  if (apagar.length) {
+    const { error } = await supabase.from('colaboradores_documentos_extras').delete().eq('colaborador_id', colaboradorId).in('tipo_codigo', apagar);
+    if (error) throw error;
+  }
+  if (gravar.length) {
+    const { error } = await supabase
+      .from('colaboradores_documentos_extras')
+      .upsert(gravar.map((tipo_codigo) => ({ colaborador_id: colaboradorId, tipo_codigo, exige: exigidos.has(tipo_codigo), motivo })));
+    if (error) throw error;
   }
 }
 

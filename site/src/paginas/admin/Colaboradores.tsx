@@ -9,10 +9,12 @@ import {
   cpfValido, data, formatarCpf, hojeIso, ordemSituacao, rotuloSituacao, rotuloStatus, soDigitos,
 } from '../../lib/formato';
 import {
-  aprovarAlocacao, devolverAlocacaoTst, lerAlocacoes, lerColaborador, lerDevolucaoTst, lerIdsComPendenciaCadastro, lerPendencias,
-  registrarIntegracao, salvarCadastro, validarAlocacao,
-  type AlocacaoResumo, type Colaborador, type Pendencia,
+  aprovarAlocacao, devolverAlocacaoTst, excecoesNovas, lerAlocacoes, lerBaseTreinamentos, lerColaborador, lerDevolucaoTst, lerExcecoes,
+  lerIdsComPendenciaCadastro, lerPendencias, registrarIntegracao, salvarCadastro, salvarTreinamentos, validarAlocacao,
+  type AlocacaoResumo, type BaseTreinamentos, type Colaborador, type Excecao, type Pendencia,
 } from '../../lib/admin';
+
+const nomeNr = (codigo: string) => codigo.replace(/^nr(\d+)$/i, 'NR-$1');
 
 type Filtro = 'abertos' | 'fornecedor' | 'analise' | 'tst' | 'liberados' | 'liberados_pendencia' | 'cadastro' | 'encerrados';
 
@@ -217,6 +219,7 @@ function Detalhe({ ehAdmin, alocacao, aoFechar, aoMudar }: { ehAdmin: boolean; a
   const [devolvendo, setDevolvendo] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [devolucaoTst, setDevolucaoTst] = useState<{ motivo: string; em: string } | null>(null);
+  const [excecoes, setExcecoes] = useState<Excecao[]>([]);
 
   const id = alocacao?.alocacao_id;
   const colabId = alocacao?.colaborador_id;
@@ -231,7 +234,9 @@ function Detalhe({ ehAdmin, alocacao, aoFechar, aoMudar }: { ehAdmin: boolean; a
     setDevolvendo(false);
     setMotivo('');
     setDevolucaoTst(null);
+    setExcecoes([]);
     if (!id || !colabId) return;
+    lerExcecoes(colabId).then(setExcecoes).catch(() => undefined);
     if (ehAdmin) lerDevolucaoTst(id).then(setDevolucaoTst).catch(() => undefined);
     Promise.all([lerColaborador(colabId), lerPendencias(id)])
       .then(([c, p]) => {
@@ -249,7 +254,10 @@ function Detalhe({ ehAdmin, alocacao, aoFechar, aoMudar }: { ehAdmin: boolean; a
       await acao();
       setOk(sucesso);
       await aoMudar();
-      if (colabId) setColab(await lerColaborador(colabId));
+      if (colabId) {
+        setColab(await lerColaborador(colabId));
+        setExcecoes(await lerExcecoes(colabId));
+      }
       if (id) setPend(await lerPendencias(id));
     } catch (e) {
       setErro(mensagemDeErro(e as Error));
@@ -283,6 +291,19 @@ function Detalhe({ ehAdmin, alocacao, aoFechar, aoMudar }: { ehAdmin: boolean; a
           <p className="aviso aviso-alerta">
             <strong>Cadastro a corrigir.</strong> {colab.pendencia_cadastro}
           </p>
+        )}
+        {excecoes.length > 0 && (
+          <div className="aviso aviso-info">
+            <strong>Treinamentos ajustados para este colaborador</strong> (fora da regra da função):
+            <ul className="lista-ajustes">
+              {[...excecoes].sort((a, b) => a.tipo_codigo.localeCompare(b.tipo_codigo)).map((e) => (
+                <li key={e.tipo_codigo}>
+                  {nomeNr(e.tipo_codigo)} {e.exige ? 'obrigatória' : 'não obrigatória'}
+                  {e.motivo ? `: ${e.motivo}` : ''} <span className="sub sub-linha">(desde {data(e.incluido_em)})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {erro && <p className="aviso aviso-erro" role="alert">{erro}</p>}
         {ok && <p className="aviso aviso-ok" role="status">{ok}</p>}
@@ -359,7 +380,7 @@ function Detalhe({ ehAdmin, alocacao, aoFechar, aoMudar }: { ehAdmin: boolean; a
             </form>
           )}
           {colab && !editando && (
-            <button type="button" className="botao botao-discreto" onClick={() => setEditando(true)}>Corrigir cadastro</button>
+            <button type="button" className="botao botao-secundario" onClick={() => setEditando(true)}>Editar cadastro</button>
           )}
         </div>
         )}
@@ -370,12 +391,14 @@ function Detalhe({ ehAdmin, alocacao, aoFechar, aoMudar }: { ehAdmin: boolean; a
         {ehAdmin && colab && editando && (
           <EdicaoCadastro
             colaborador={colab}
+            excecoes={excecoes}
             aoCancelar={() => setEditando(false)}
-            aoSalvar={(dados) =>
+            aoSalvar={(dados, nr) =>
               agir(async () => {
                 await salvarCadastro(colab.id, dados);
+                await salvarTreinamentos(colab.id, nr.exigidos, nr.daFuncao, excecoes, nr.todos, nr.motivo);
                 setEditando(false);
-              }, 'Cadastro atualizado.')
+              }, 'Cadastro atualizado. Os documentos exigidos abaixo já seguem a nova regra.')
             }
           />
         )}
@@ -415,32 +438,84 @@ function Detalhe({ ehAdmin, alocacao, aoFechar, aoMudar }: { ehAdmin: boolean; a
   );
 }
 
+type Treinamentos = { exigidos: Set<string>; daFuncao: Set<string>; todos: string[]; motivo: string };
+type DadosCadastro = { nome: string; cpf: string | null; pendencia_cadastro: string | null; funcao_id: string | null };
+
 function EdicaoCadastro({
-  colaborador, aoCancelar, aoSalvar,
+  colaborador, excecoes, aoCancelar, aoSalvar,
 }: {
   colaborador: Colaborador;
+  excecoes: Excecao[];
   aoCancelar: () => void;
-  aoSalvar: (d: { nome: string; cpf: string | null; pendencia_cadastro: string | null }) => void;
+  aoSalvar: (d: DadosCadastro, nr: Treinamentos) => void;
 }) {
   const [nome, setNome] = useState(colaborador.nome);
   const [cpf, setCpf] = useState(formatarCpf(colaborador.cpf));
   const [conferido, setConferido] = useState(true);
+  const [funcaoId, setFuncaoId] = useState(colaborador.funcao_id ?? '');
+  const [base, setBase] = useState<BaseTreinamentos | null>(null);
+  const [erroBase, setErroBase] = useState<string | null>(null);
+  // Marcação do formulário: começa com a regra atual (função + exceções).
+  const [exigidos, setExigidos] = useState<Set<string> | null>(null);
+  const [motivo, setMotivo] = useState('');
+
+  useEffect(() => {
+    lerBaseTreinamentos()
+      .then((b) => {
+        setBase(b);
+        const daFuncao = b.porFuncao.get(colaborador.funcao_id ?? '') ?? new Set<string>();
+        const inicial = new Set(b.tipos.map((t) => t.codigo).filter((c) => excecoes.find((e) => e.tipo_codigo === c)?.exige ?? daFuncao.has(c)));
+        setExigidos(inicial);
+      })
+      .catch((e) => setErroBase(mensagemDeErro(e)));
+    // Só ao abrir o formulário.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const digitos = soDigitos(cpf);
   const cpfOk = digitos.length === 0 || cpfValido(digitos);
+  const todos = base?.tipos.map((t) => t.codigo) ?? [];
+  const daFuncao = base?.porFuncao.get(funcaoId) ?? new Set<string>();
+  const mudancas = base && exigidos ? excecoesNovas(exigidos, daFuncao, excecoes, todos) : { gravar: [], apagar: [] };
+  const precisaMotivo = mudancas.gravar.length > 0;
+  const podeSalvar = cpfOk && nome.trim().length >= 2 && !!exigidos && (!precisaMotivo || motivo.trim().length >= 5);
+
+  function trocarFuncao(novaId: string) {
+    // Ao trocar a função, as NRs passam a seguir a nova função (as exceções marcadas à mão continuam).
+    if (base && exigidos) {
+      const antiga = base.porFuncao.get(funcaoId) ?? new Set<string>();
+      const nova = base.porFuncao.get(novaId) ?? new Set<string>();
+      setExigidos(new Set(todos.filter((c) => (exigidos.has(c) !== antiga.has(c) ? exigidos.has(c) : nova.has(c)))));
+    }
+    setFuncaoId(novaId);
+  }
+
+  function marcar(codigo: string, valor: boolean) {
+    setExigidos((x) => {
+      const n = new Set(x);
+      if (valor) n.add(codigo);
+      else n.delete(codigo);
+      return n;
+    });
+  }
 
   function enviar(e: FormEvent) {
     e.preventDefault();
-    if (!cpfOk || nome.trim().length < 2) return;
-    aoSalvar({
-      nome: nome.trim().toUpperCase(),
-      cpf: digitos || null,
-      pendencia_cadastro: conferido && digitos ? null : colaborador.pendencia_cadastro,
-    });
+    if (!podeSalvar || !exigidos) return;
+    aoSalvar(
+      {
+        nome: nome.trim().toUpperCase(),
+        cpf: digitos || null,
+        pendencia_cadastro: conferido && digitos ? null : colaborador.pendencia_cadastro,
+        funcao_id: funcaoId || null,
+      },
+      { exigidos, daFuncao, todos, motivo: motivo.trim() },
+    );
   }
 
   return (
     <form className="formulario formulario-largo caixa" onSubmit={enviar} noValidate>
+      <h3 className="detalhe-subtitulo">Editar cadastro</h3>
       <div className="grade-2">
         <label className="campo">
           <span>Nome</span>
@@ -458,8 +533,61 @@ function EdicaoCadastro({
           <span>Cadastro conferido: tirar o aviso de correção</span>
         </label>
       )}
+
+      {erroBase && <p className="aviso aviso-erro" role="alert">{erroBase}</p>}
+      {!base && !erroBase && <Carregando />}
+      {base && exigidos && (
+        <>
+          <label className="campo">
+            <span>Função</span>
+            <select value={funcaoId} onChange={(e) => trocarFuncao(e.target.value)}>
+              <option value="">Não cadastrada{colaborador.funcao_texto ? ` (informada: ${colaborador.funcao_texto.toLowerCase()})` : ''}</option>
+              {base.funcoes.map((f) => (
+                <option key={f.id} value={f.id}>{f.nome}</option>
+              ))}
+            </select>
+            <small className="dica">A função define as NRs obrigatórias. Abaixo dá para ajustar para este colaborador.</small>
+          </label>
+
+          <fieldset className="campo-grupo">
+            <legend>Treinamentos obrigatórios (NR)</legend>
+            <div className="grade-nr">
+              {base.tipos.map((t) => {
+                const marcado = exigidos.has(t.codigo);
+                const ajuste = marcado !== daFuncao.has(t.codigo);
+                return (
+                  <label key={t.codigo} className={`opcao opcao-nr${ajuste ? ' opcao-ajuste' : ''}`}>
+                    <input type="checkbox" checked={marcado} onChange={(e) => marcar(t.codigo, e.target.checked)} />
+                    <span>
+                      {t.nome}
+                      <small className="sub">
+                        {ajuste ? (marcado ? 'Ajuste: a função não pede' : 'Ajuste: a função pede') : daFuncao.has(t.codigo) ? 'Pela função' : 'Não se aplica'}
+                      </small>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          {precisaMotivo && (
+            <label className="campo">
+              <span>Motivo do ajuste</span>
+              <textarea
+                rows={2}
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ex.: atividade na obra não envolve trabalho em altura, conforme a engenharia"
+              />
+              <small className="dica">
+                Fica registrado no histórico do colaborador. Vale para {mudancas.gravar.map(nomeNr).join(', ')}.
+              </small>
+            </label>
+          )}
+        </>
+      )}
       <div className="linha-botoes">
-        <button className="botao" type="submit" disabled={!cpfOk || nome.trim().length < 2}>Salvar cadastro</button>
+        <button className="botao" type="submit" disabled={!podeSalvar}>Salvar cadastro</button>
         <button className="botao botao-discreto" type="button" onClick={aoCancelar}>Cancelar</button>
       </div>
     </form>

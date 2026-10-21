@@ -35,6 +35,7 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261021_014_perfil_engenharia.sql` | Novo perfil de acesso: engenharia da obra |
 | `20261021_015_painel_obra.sql` | Painel da obra (só leitura): colaboradores, pendências de documento, integração e medição das obras do acesso, sem CPF e sem arquivos |
 | `20261021_016_painel_obra_historico.sql` | Painel da obra com o histórico da medição, incluindo os meses da planilha das empresas que trabalham na obra |
+| `20261021_017_treinamentos_por_colaborador.sql` | Exceção da NR por colaborador: o administrativo torna uma NR obrigatória ou não obrigatória fora da regra da função, com motivo registrado no histórico |
 
 Os arquivos usados para carregar as planilhas `CONTROLE_DE_INTEGRAÇÃO` e de medição mensal não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 
@@ -127,6 +128,12 @@ Quando há e-mails prontos, aparece um aviso no topo do portal e um contador no 
 O botão usa o programa de e-mail padrão do Windows. Para ser o Outlook: **Configurações > Aplicativos > Aplicativos padrão > Outlook**, e em **MAILTO** escolher Outlook.
 
 O envio automático (sem abrir o Outlook) depende de autorização do administrador do Microsoft 365 da Emais; o registro das cobranças já está pronto para isso.
+
+## Treinamentos (NR) por colaborador
+
+A função define as NRs obrigatórias. Em **Colaboradores**, no detalhe do colaborador, o administrativo usa **Editar cadastro** para corrigir nome, CPF e função e para marcar, NR por NR, se ela se aplica àquele colaborador. Quando a marcação foge da regra da função, o portal pede o motivo, que fica no histórico do colaborador, e mostra o ajuste no detalhe (também para o TST). Desmarcar o ajuste volta a valer a função.
+
+A mudança vale na hora para as pendências, a liberação, o "O que falta" do fornecedor e o Painel da obra. Só as NRs podem ser ajustadas assim; os demais documentos seguem a regra geral. Só o administrativo grava.
 
 ## Painel da obra (engenharia)
 

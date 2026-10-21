@@ -1924,3 +1924,51 @@ button.celula:hover {
 .grupo-analise > .tabela-rolagem {
   margin: 0 14px 14px;
 }
+
+/* Edição de cadastro: treinamentos por colaborador */
+.aviso-info {
+  background: #eef5f4;
+  border-color: #b9d9d3;
+  color: var(--tinta);
+}
+
+.lista-ajustes {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.campo-grupo {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.campo-grupo legend {
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.grade-nr {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.opcao.opcao-nr {
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-campo);
+  background: var(--superficie);
+}
+
+.opcao-nr .sub {
+  font-size: 0.8rem;
+}
+
+.opcao.opcao-ajuste {
+  border-color: var(--ambar);
+  background: #fdf6e6;
+}
