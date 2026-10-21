@@ -2,7 +2,7 @@
 
 Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e enviarem documentos. O administrativo confere e libera, e o TST da obra dá a validação final.
 
-- **Site:** https://jana-projetos.github.io/portal-terceiros/
+- **Site:** https://emais-projetos.github.io/portal-terceiros/
 - **Banco e login:** Supabase, projeto `ntjhkengoqpcyjsjawbw`
 
 ## Como está organizado
@@ -51,12 +51,23 @@ Os arquivos usados para carregar as planilhas `CONTROLE_DE_INTEGRAÇÃO` e de me
 
 Quem decide o que cada pessoa vê é o banco (regras de acesso por linha). O site usa só a chave pública do Supabase.
 
+## Troca de endereço (jana-projetos para emais-projetos)
+
+O endereço do site vem do nome da conta do GitHub. Para ficar `emais-projetos.github.io`:
+
+1. No GitHub, o repositório passa para a organização **emais-projetos** (ou a conta muda de nome).
+2. Em **Settings > Pages** do repositório, a origem continua em "GitHub Actions"; a próxima publicação já sai no endereço novo.
+3. No Supabase, em **Authentication > URL Configuration**: Site URL `https://emais-projetos.github.io/portal-terceiros/` e, em Redirect URLs, `https://emais-projetos.github.io/portal-terceiros/**` (o endereço antigo pode ficar na lista até a troca terminar).
+4. Quem estava logado entra de novo uma vez (o navegador guarda a sessão por endereço).
+
+O GitHub não redireciona o endereço antigo do site. Para os links já enviados por e-mail continuarem funcionando, fica uma página de redirecionamento no endereço antigo que leva para o novo, com o mesmo caminho.
+
 ## Configuração do login no Supabase (feita uma vez)
 
 Em **Authentication > URL Configuration**:
 
-- **Site URL:** `https://jana-projetos.github.io/portal-terceiros/`
-- **Redirect URLs:** `https://jana-projetos.github.io/portal-terceiros/**` e, para testes no computador, `http://localhost:5173/**`
+- **Site URL:** `https://emais-projetos.github.io/portal-terceiros/`
+- **Redirect URLs:** `https://emais-projetos.github.io/portal-terceiros/**` e, para testes no computador, `http://localhost:5173/**`
 
 Em **Authentication > Sign In / Providers**, desligar **Allow new users to sign up**. Os acessos são criados pelo administrativo, ninguém se cadastra sozinho.
 

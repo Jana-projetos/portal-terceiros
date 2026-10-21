@@ -15,7 +15,9 @@ const cabecalhos = {
 };
 
 // Endereços aceitos para o retorno do link. O Supabase também confere a lista de Redirect URLs.
+// O endereço antigo (jana-projetos) fica aceito durante a troca para emais-projetos.
 const DESTINOS_ACEITOS = [
+  'https://emais-projetos.github.io/portal-terceiros/',
   'https://jana-projetos.github.io/portal-terceiros/',
   'http://localhost:5173/portal-terceiros/',
   'http://localhost:4173/portal-terceiros/',

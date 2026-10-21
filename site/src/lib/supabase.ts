@@ -11,7 +11,7 @@ export const supabase = createClient(url, chave, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
 
-// Endereço base do site (ex.: https://jana-projetos.github.io/portal-terceiros/), usado nos links enviados por e-mail.
+// Endereço base do site (ex.: https://emais-projetos.github.io/portal-terceiros/), usado nos links enviados por e-mail.
 export const enderecoDoSite = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
 
 // Traduz as mensagens de erro mais comuns do Supabase Auth.
