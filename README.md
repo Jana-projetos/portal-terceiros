@@ -88,10 +88,10 @@ O download individual usa o mesmo nome. O prazo de 30 dias para apagar o arquivo
 A lista que o TST baixa em **Integração** segue o documento controlado da Segurança do Trabalho **DECLARAÇÃO DE RECEBIMENTO DE TREINAMENTO** (data 01.08.2025, revisão 03), em A4 retrato:
 
 - uma folha por empresa, com 7 linhas de assinatura; acima disso, mais folhas, com "PAGINA: x de y";
-- a declaração cita a obra ("EMAIS" + nome da obra), e o instrutor sai no rodapé com a função;
+- a declaração cita o nome da obra como está no cadastro (controle de integração), e o instrutor sai no rodapé como "Instrutor(a)", com a função;
 - depois de confirmada a presença, a lista sai só com os presentes.
 
-O texto, a data e a revisão ficam na tabela `modelos_documento` (código `lista_presenca_integracao`). Numa nova revisão, basta atualizar essa linha no Supabase: o layout é o mesmo e o site não precisa mudar. No texto, `**...**` é negrito, `_..._` é itálico e `{CONTRATANTE}` vira "EMAIS" + obra.
+O texto, a data e a revisão ficam na tabela `modelos_documento` (código `lista_presenca_integracao`). Numa nova revisão, basta atualizar essa linha no Supabase: o layout é o mesmo e o site não precisa mudar. No texto, `**...**` é negrito, `_..._` é itálico e `{CONTRATANTE}` vira o nome da obra.
 
 ## Medição mensal (F.48)
 
