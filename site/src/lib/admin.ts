@@ -115,6 +115,7 @@ export async function alterarAtivo(usuarioId: string, ativo: boolean) {
 export type DocumentoEmAnalise = {
   id: string;
   tipo_codigo: string;
+  colaborador_id: string | null;
   data_emissao: string | null;
   data_vencimento_informada: string | null;
   dispensado: boolean;
@@ -147,7 +148,7 @@ export async function lerFilaAnalise(): Promise<DocumentoEmAnalise[]> {
     supabase
       .from('documentos')
       .select(
-        'id, tipo_codigo, data_emissao, data_vencimento_informada, dispensado, dados, enviado_em, aceite_lgpd_em, ' +
+        'id, tipo_codigo, colaborador_id, data_emissao, data_vencimento_informada, dispensado, dados, enviado_em, aceite_lgpd_em, ' +
           'tipos_documento(nome, grupo, area, regra, validade_dias, impeditivo), empresas(razao_social, cnpj), ' +
           'colaboradores(nome, cpf), arquivos(id, caminho, nome_original, tamanho_bytes, tipo_mime, baixado_em, apagado_em)',
       )

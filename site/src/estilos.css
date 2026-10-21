@@ -1844,3 +1844,83 @@ button.celula:hover {
   outline: 2px solid var(--petroleo);
   outline-offset: 1px;
 }
+
+/* Análise de documentos: um grupo por colaborador */
+.grupos-analise {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.grupo-analise {
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  background: var(--superficie);
+}
+
+.grupo-aberto {
+  border-color: #9fc4bf;
+  box-shadow: inset 4px 0 0 var(--petroleo);
+}
+
+.grupo-cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 14px;
+}
+
+.grupo-abrir {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--tinta);
+  text-align: left;
+  cursor: pointer;
+}
+
+.grupo-abrir:focus-visible {
+  outline: 2px solid var(--petroleo);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.grupo-nome {
+  font-weight: 600;
+}
+
+.grupo-seta {
+  flex: none;
+  color: var(--petroleo);
+  transition: transform 0.15s;
+}
+
+.grupo-aberto .grupo-seta {
+  transform: rotate(90deg);
+}
+
+.filtros > .botao-filtro {
+  align-self: flex-end;
+}
+
+.grupo-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  color: var(--suave);
+  font-size: 0.9rem;
+}
+
+.grupo-analise > .tabela-rolagem {
+  margin: 0 14px 14px;
+}
