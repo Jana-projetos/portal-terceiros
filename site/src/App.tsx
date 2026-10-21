@@ -18,6 +18,7 @@ import { MedicaoFornecedor } from './paginas/fornecedor/Medicao';
 import { Medicoes } from './paginas/admin/Medicoes';
 import { Indicadores } from './paginas/admin/Indicadores';
 import { Cobrancas } from './paginas/admin/Cobrancas';
+import { PainelObra } from './paginas/PainelObra';
 import { Carregando } from './componentes/Carregando';
 
 export function App() {
@@ -35,6 +36,7 @@ export function App() {
       <Route path="/esqueci-senha" element={<SoForaDoLogin><EsqueciSenha /></SoForaDoLogin>} />
       <Route path="/nova-senha" element={<NovaSenha />} />
       <Route path="/" element={<ComLogin><Inicio /></ComLogin>} />
+      <Route path="/painel-obra" element={<SoPerfil perfil={['admin', 'tst', 'engenharia']}><PainelObra /></SoPerfil>} />
       <Route path="/analise" element={<SoAdmin><Analise /></SoAdmin>} />
       <Route path="/colaboradores" element={<SoPerfil perfil={['admin', 'tst']}><Colaboradores /></SoPerfil>} />
       <Route path="/liberacao" element={<SoAdmin><Liberacao /></SoAdmin>} />

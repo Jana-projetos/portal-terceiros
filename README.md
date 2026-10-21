@@ -31,6 +31,9 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261019_010_cobrancas.sql` | Registro das cobranças por e-mail já abertas ou dispensadas e destinatários da engenharia de cada obra |
 | `20261019_011_cobranca_tres_passos.sql` | Tolerância até o dia 30, data combinada com o fornecedor, novos tipos de cobrança e assinatura dos e-mails |
 | `20261021_012_modelo_lista_integracao.sql` | Documentos controlados: texto, data e revisão da lista de presença da integração |
+| `20261021_013_lista_integracao_obra_instrutor.sql` | Lista de presença com o nome da obra e rótulo Instrutor(a) |
+| `20261021_014_perfil_engenharia.sql` | Novo perfil de acesso: engenharia da obra |
+| `20261021_015_painel_obra.sql` | Painel da obra (só leitura): colaboradores, pendências de documento, integração e medição das obras do acesso, sem CPF e sem arquivos |
 
 Os arquivos usados para carregar as planilhas `CONTROLE_DE_INTEGRAÇÃO` e de medição mensal não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 
@@ -41,6 +44,7 @@ Os arquivos usados para carregar as planilhas `CONTROLE_DE_INTEGRAÇÃO` e de me
 | Fornecedor | Só os dados da própria empresa |
 | Administrativo | Tudo, e é o único que abre os arquivos enviados |
 | TST da obra | Os dados digitados das obras pelas quais responde, sem acesso aos arquivos |
+| Engenharia da obra | Só o **Painel da obra** das obras marcadas no acesso, em leitura: nomes, funções, situação, pendências, integração e medição. Não vê CPF, arquivos nem os documentos da medição |
 
 Quem decide o que cada pessoa vê é o banco (regras de acesso por linha). O site usa só a chave pública do Supabase.
 
@@ -122,6 +126,18 @@ Quando há e-mails prontos, aparece um aviso no topo do portal e um contador no 
 O botão usa o programa de e-mail padrão do Windows. Para ser o Outlook: **Configurações > Aplicativos > Aplicativos padrão > Outlook**, e em **MAILTO** escolher Outlook.
 
 O envio automático (sem abrir o Outlook) depende de autorização do administrador do Microsoft 365 da Emais; o registro das cobranças já está pronto para isso.
+
+## Painel da obra (engenharia)
+
+Acompanhamento da obra para a engenharia, também aberto ao TST e ao administrativo (menu **Painel da obra**). A engenharia entra direto nele e não tem outras telas. As obras de cada acesso são marcadas em **Acessos** ao criar o acesso com o perfil *Engenharia da obra*.
+
+- **Resumo:** liberados para trabalhar e aguardando liberação, conformidade documental (liberados sem documento vencido ou faltando), integração em dia e pagamentos do mês.
+- **Medição, pagamento das empresas:** por mês trabalhado, cada empresa com colaborador liberado ou com medição aparece como *Liberar* (medição aprovada), *Reter* (passou do dia 30, ou da data combinada, sem aprovação) ou *Aguardar* (no prazo até o dia 25, na tolerância até o dia 30, com data combinada ou em conferência na Emais), com o que falta.
+- **Conformidade documental por empresa:** liberados, com pendência, em dia, vencendo em 30 dias e aguardando liberação. Clicando na empresa aparecem os colaboradores e os documentos pendentes.
+- **Integração:** turmas agendadas e realizadas nos últimos 90 dias e liberados sem integração, vencida ou vencendo em 30 dias.
+- **Colaboradores na obra:** lista com busca e filtros (com pendência, sem integração em dia, aguardando liberação).
+
+Os dados vêm da função `painel_obra` do banco, que confere se a obra é do acesso. A engenharia não lê nenhuma tabela diretamente.
 
 ## Indicadores
 

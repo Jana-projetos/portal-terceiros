@@ -116,7 +116,7 @@ export function Acessos() {
                   </td>
                   <td className="quebra">
                     {a.perfil === 'fornecedor' && a.empresas.map((e) => e.razao_social).join(', ')}
-                    {a.perfil === 'tst' && a.obras.map((o) => o.nome).join(', ')}
+                    {(a.perfil === 'tst' || a.perfil === 'engenharia') && a.obras.map((o) => o.nome).join(', ')}
                     {a.perfil === 'admin' && <span className="sub">Todas</span>}
                   </td>
                   <td className="acoes">
@@ -201,7 +201,7 @@ function NovoAcesso({
     nome.trim().length >= 2 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
     (perfil !== 'fornecedor' || selEmpresas.length > 0) &&
-    (perfil !== 'tst' || selObras.length > 0);
+    ((perfil !== 'tst' && perfil !== 'engenharia') || selObras.length > 0);
 
   async function enviar(e: FormEvent) {
     e.preventDefault();
@@ -214,7 +214,7 @@ function NovoAcesso({
         email: email.trim(),
         perfil,
         empresas: perfil === 'fornecedor' ? selEmpresas : [],
-        obras: perfil === 'tst' ? selObras : [],
+        obras: perfil === 'tst' || perfil === 'engenharia' ? selObras : [],
       });
       aoCriar(l);
     } catch (er) {
@@ -229,7 +229,7 @@ function NovoAcesso({
       <form className="formulario formulario-largo" onSubmit={enviar} noValidate>
         <fieldset className="opcoes">
           <legend>Perfil</legend>
-          {(['fornecedor', 'tst', 'admin'] as Perfil[]).map((p) => (
+          {(['fornecedor', 'tst', 'engenharia', 'admin'] as Perfil[]).map((p) => (
             <label key={p} className="opcao">
               <input type="radio" name="perfil" value={p} checked={perfil === p} onChange={() => setPerfil(p)} />
               <span>{nomesPerfil[p]}</span>
@@ -274,9 +274,12 @@ function NovoAcesso({
           </div>
         )}
 
-        {perfil === 'tst' && (
+        {(perfil === 'tst' || perfil === 'engenharia') && (
           <div className="campo">
-            <span>Obras sob responsabilidade</span>
+            <span>{perfil === 'tst' ? 'Obras sob responsabilidade' : 'Obras que a engenharia acompanha'}</span>
+            {perfil === 'engenharia' && (
+              <small className="dica">Só leitura: vê a integração, a conformidade documental e a medição das obras marcadas. Não vê CPF nem arquivos.</small>
+            )}
             <ul className="lista-marcar lista-curta" aria-label="Obras">
               {obras.map((o) => (
                 <li key={o.id}>
@@ -316,6 +319,8 @@ function EnvioDoLink({ link, empresas, aoFechar }: { link: LinkAcesso | null; em
       ? `É por ele que ${empresas.length === 1 ? `a ${empresas[0].razao_social}` : 'as suas empresas'} vai cadastrar os colaboradores e enviar a documentação para as obras da Emais.`
       : link.perfil === 'tst'
         ? 'É por ele que você vai consultar os colaboradores das suas obras e dar a validação final da segurança do trabalho.'
+        : link.perfil === 'engenharia'
+          ? 'É por ele que você vai acompanhar, nas suas obras, a integração dos terceiros, a situação dos documentos e a medição de cada empresa, com quem está liberado para pagamento.'
         : 'É por ele que você vai conferir a documentação dos terceiros e liberar os colaboradores para as obras.';
   const assunto = link.primeiro_acesso ? 'Seu acesso ao Portal de Terceiros da Emais' : 'Nova senha do Portal de Terceiros da Emais';
   const corpo = link.primeiro_acesso

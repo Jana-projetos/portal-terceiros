@@ -5,8 +5,9 @@ import { lerAlocacoesAbertas, lerMinhasEmpresas, resumirPorObra, formatarCnpj, t
 import { mensagemDeErro } from '../lib/supabase';
 import { Topo } from '../componentes/Topo';
 import { Carregando } from '../componentes/Carregando';
+import { PainelObra } from './PainelObra';
 
-const titulos: Record<Perfil, { titulo: string; apoio: string; vazio: string }> = {
+const titulos: Record<Exclude<Perfil, 'engenharia'>, { titulo: string; apoio: string; vazio: string }> = {
   admin: {
     titulo: 'Situação das obras',
     apoio: 'Colaboradores alocados em cada obra, sem contar os desligados.',
@@ -24,7 +25,13 @@ const titulos: Record<Perfil, { titulo: string; apoio: string; vazio: string }> 
   },
 };
 
+// A engenharia entra direto no painel da obra; os demais perfis veem o resumo por obra.
 export function Inicio() {
+  const { usuario } = useSessao();
+  return usuario?.perfil === 'engenharia' ? <PainelObra /> : <InicioPadrao />;
+}
+
+function InicioPadrao() {
   const { usuario } = useSessao();
   const [resumo, setResumo] = useState<ResumoObra[] | null>(null);
   const [empresas, setEmpresas] = useState<{ razao_social: string; cnpj: string }[]>([]);
@@ -44,7 +51,7 @@ export function Inicio() {
     };
   }, [usuario?.perfil]);
 
-  if (!usuario) return null;
+  if (!usuario || usuario.perfil === 'engenharia') return null;
   const textos = titulos[usuario.perfil];
   const total = resumo && somar(resumo);
 

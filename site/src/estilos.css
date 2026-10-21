@@ -1789,3 +1789,46 @@ a.celula:hover {
     font-size: 0.9rem;
   }
 }
+
+/* Painel da obra */
+.sub.sub-linha {
+  display: inline;
+}
+
+.linha-detalhe td {
+  background: var(--fundo);
+  padding-top: 0.5rem;
+  padding-bottom: 0.75rem;
+}
+
+.linha-detalhe .lista-simples li + li {
+  margin-top: 0.35rem;
+}
+
+.lista-rolagem {
+  overflow-y: auto;
+}
+
+.lista-simples .item-pessoa {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+}
+
+.item-pessoa > span:last-child {
+  text-align: right;
+  max-width: 60%;
+}
+
+@media (max-width: 640px) {
+  .item-pessoa > span:last-child {
+    text-align: left;
+    max-width: none;
+  }
+}
+
+.botao-mais {
+  margin-top: 0.75rem;
+}

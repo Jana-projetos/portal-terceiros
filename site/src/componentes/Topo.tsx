@@ -49,6 +49,7 @@ export function Topo() {
       {ehTst && (
         <nav className="menu" aria-label="Seções do TST">
           <NavLink to="/" end>Obras</NavLink>
+          <NavLink to="/painel-obra">Painel da obra</NavLink>
           <NavLink to="/colaboradores?situacao=tst" className={({ isActive }) => (isActive && naValidacao ? 'active' : undefined)}>
             Para validar
             {naFila ? <span className="contador" aria-label={`${naFila} para validar`}>{naFila}</span> : null}
@@ -57,6 +58,11 @@ export function Topo() {
           <NavLink to="/colaboradores" end className={({ isActive }) => (isActive && !naValidacao ? 'active' : undefined)}>
             Colaboradores
           </NavLink>
+        </nav>
+      )}
+      {usuario?.perfil === 'engenharia' && (
+        <nav className="menu" aria-label="Seções da engenharia">
+          <NavLink to="/" end>Painel da obra</NavLink>
         </nav>
       )}
       {usuario?.perfil === 'fornecedor' && (
@@ -71,6 +77,7 @@ export function Topo() {
       {ehAdmin && (
         <nav className="menu" aria-label="Seções do administrativo">
           <NavLink to="/" end>Obras</NavLink>
+          <NavLink to="/painel-obra">Painel da obra</NavLink>
           <NavLink to="/analise">
             Análise de documentos
             {naFila ? <span className="contador" aria-label={`${naFila} na fila`}>{naFila}</span> : null}

@@ -3,7 +3,7 @@
 // e o administrativo envia pelo Outlook.
 //
 // Ações:
-//   { acao: 'criar', nome, email, perfil: 'fornecedor'|'tst'|'admin', empresas?: uuid[], obras?: uuid[], destino }
+//   { acao: 'criar', nome, email, perfil: 'fornecedor'|'tst'|'engenharia'|'admin', empresas?: uuid[], obras?: uuid[], destino }
 //   { acao: 'link', usuario_id, destino }
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 
@@ -84,9 +84,9 @@ async function criar(servico: Cliente, adminId: string, corpo: Record<string, un
 
   if (nome.length < 2) return erro(400, 'Informe o nome');
   if (!EMAIL.test(email)) return erro(400, 'E-mail inválido');
-  if (!['fornecedor', 'tst', 'admin'].includes(perfil)) return erro(400, 'Perfil inválido');
+  if (!['fornecedor', 'tst', 'engenharia', 'admin'].includes(perfil)) return erro(400, 'Perfil inválido');
   if (perfil === 'fornecedor' && empresas.length === 0) return erro(400, 'Escolha pelo menos uma empresa');
-  if (perfil === 'tst' && obras.length === 0) return erro(400, 'Escolha pelo menos uma obra');
+  if ((perfil === 'tst' || perfil === 'engenharia') && obras.length === 0) return erro(400, 'Escolha pelo menos uma obra');
   if ([...empresas, ...obras].some((id) => !UUID.test(id))) return erro(400, 'Empresa ou obra inválida');
 
   const { data: jaExiste } = await servico.from('usuarios').select('id').eq('email', email).maybeSingle();
@@ -133,7 +133,8 @@ async function criar(servico: Cliente, adminId: string, corpo: Record<string, un
     if (error) return desfazer(`Não foi possível ligar as empresas: ${error.message}`);
     await servico.from('empresas').update({ email_acesso: email }).in('id', empresas);
   }
-  if (perfil === 'tst') {
+  // TST e engenharia ficam ligados às obras na mesma tabela; o perfil decide o que cada um pode fazer.
+  if (perfil === 'tst' || perfil === 'engenharia') {
     const { error } = await servico
       .from('tst_obras')
       .insert(obras.map((obra_id) => ({ usuario_id: usuarioId, obra_id })));
