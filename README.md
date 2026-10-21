@@ -55,12 +55,12 @@ Quem decide o que cada pessoa vê é o banco (regras de acesso por linha). O sit
 
 O endereço do site vem do nome da conta do GitHub. Para ficar `emais-projetos.github.io`:
 
-1. No GitHub, o repositório passa para a organização **emais-projetos** (ou a conta muda de nome).
+1. No GitHub, o repositório passa para a organização **emais-projetos** (Settings > General > Transfer ownership).
 2. Em **Settings > Pages** do repositório, a origem continua em "GitHub Actions"; a próxima publicação já sai no endereço novo.
-3. No Supabase, em **Authentication > URL Configuration**: Site URL `https://emais-projetos.github.io/portal-terceiros/` e, em Redirect URLs, `https://emais-projetos.github.io/portal-terceiros/**` (o endereço antigo pode ficar na lista até a troca terminar).
+3. No Supabase, em **Authentication > URL Configuration**: Site URL `https://emais-projetos.github.io/portal-terceiros/` e, em Redirect URLs, só `https://emais-projetos.github.io/portal-terceiros/**`.
 4. Quem estava logado entra de novo uma vez (o navegador guarda a sessão por endereço).
 
-O GitHub não redireciona o endereço antigo do site. Para os links já enviados por e-mail continuarem funcionando, fica uma página de redirecionamento no endereço antigo que leva para o novo, com o mesmo caminho.
+O endereço antigo (`jana-projetos.github.io`) deixa de abrir com a transferência; como o portal ainda estava em teste, não ficou redirecionamento. Os links dos e-mails novos já saem com o endereço da organização.
 
 ## Configuração do login no Supabase (feita uma vez)
 
