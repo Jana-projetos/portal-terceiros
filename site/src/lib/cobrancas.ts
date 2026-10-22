@@ -821,3 +821,33 @@ export const titulosGrupo: Record<TipoCobranca, { titulo: string; apoio: string 
     apoio: 'Toda segunda-feira: colaboradores cadastrados com documento obrigatório faltando ou devolvido, parado há 3 dias úteis ou mais.',
   },
 };
+
+// ---------------------------------------------------------------- E-mail com cartão de visita
+// O link do Outlook (mailto) só leva texto. Para o cartão entrar, o e-mail vai para a área de transferência
+// em HTML (texto + cartão) e a pessoa cola no corpo do e-mail aberto no Outlook.
+// Por enquanto o cartão é um só; depois cada administrativo terá o seu.
+
+export const CARTAO_ASSINATURA = () => `${enderecoDoSite}assinatura/cartao.png`;
+
+const escapar = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const comLinks = (t: string) => t.replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}">${u}</a>`);
+
+// Corpo em HTML: o texto até "Atenciosamente," e, no lugar da assinatura em texto, o cartão.
+export function corpoComCartao(corpo: string): string {
+  const linhas = corpo.split('\n');
+  const fim = linhas.lastIndexOf('Atenciosamente,');
+  const texto = fim >= 0 ? linhas.slice(0, fim + 1) : linhas;
+  const html = texto.map((l) => (l ? comLinks(escapar(l)) : '&nbsp;')).join('<br>');
+  return (
+    `<div style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1f2d2b;">${html}<br><br>` +
+    `<img src="${CARTAO_ASSINATURA()}" width="462" height="157" alt="Grupo Emais" style="display:block; border:0;"></div>`
+  );
+}
+
+export async function copiarComCartao(corpo: string) {
+  const item = new ClipboardItem({
+    'text/html': new Blob([corpoComCartao(corpo)], { type: 'text/html' }),
+    'text/plain': new Blob([corpo], { type: 'text/plain' }),
+  });
+  await navigator.clipboard.write([item]);
+}

@@ -2314,3 +2314,11 @@ button.celula:hover {
   flex: 1 1 240px;
   max-width: 320px;
 }
+
+.cobranca-cartao {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-top: 8px;
+  border-radius: 4px;
+}

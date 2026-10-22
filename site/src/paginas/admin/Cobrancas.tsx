@@ -4,13 +4,12 @@ import { Carregando } from '../../componentes/Carregando';
 import { mensagemDeErro } from '../../lib/supabase';
 import { useSessao } from '../../lib/sessao';
 import { data, hojeIso } from '../../lib/formato';
-import { copiarTexto, linkOutlook } from '../../lib/admin';
+import { linkOutlook } from '../../lib/admin';
 import { Farol, SeloFrente } from '../../componentes/Farois';
 import type { Cor } from '../../lib/farois';
-import { guardarAssinatura, guardarDestinatariosObra, montarFila, registrarCobrancas, titulosGrupo, type Assinatura, type Cobranca, type Fila, type TipoCobranca } from '../../lib/cobrancas';
+import { CARTAO_ASSINATURA, copiarComCartao, guardarAssinatura, guardarDestinatariosObra, montarFila, registrarCobrancas, titulosGrupo, type Assinatura, type Cobranca, type Fila, type TipoCobranca } from '../../lib/cobrancas';
 
 const ORDEM: TipoCobranca[] = ['lembrete_medicao', 'notificacao_medicao', 'cobranca_medicao', 'retencao_obra', 'vencimento_documento', 'integracao_documentos'];
-const LIMITE_LINK = 1900;
 
 export function Cobrancas() {
   const { usuario } = useSessao();
@@ -37,7 +36,7 @@ export function Cobrancas() {
 
   const abertas = useMemo(() => (fila?.cobrancas ?? []).filter((c) => !feitas.has(c.chave)), [fila, feitas]);
 
-  async function registrar(lista: Cobranca[], situacao: 'aberta_no_outlook' | 'dispensada') {
+  async function registrar(lista: Cobranca[], situacao: 'aberta_no_outlook' | 'dispensada', aviso?: string) {
     setErro(null);
     try {
       for (const c of lista) {
@@ -48,7 +47,7 @@ export function Cobrancas() {
       setOk(
         situacao === 'dispensada'
           ? `${lista.length === 1 ? 'Cobrança dispensada' : `${lista.length} cobranças dispensadas`}. ${lista.length === 1 ? 'Ela não volta' : 'Elas não voltam'} para a lista.`
-          : `E-mail para ${lista[0].titulo} aberto no Outlook. Confira e clique em enviar.`,
+          : (aviso ?? `E-mail para ${lista[0].titulo} aberto no Outlook. Confira e clique em enviar.`),
       );
     } catch (e) {
       setErro(mensagemDeErro(e as Error));
@@ -84,16 +83,24 @@ export function Cobrancas() {
       aoAlternar={() => setAberta(aberta === g.id ? null : g.id)}
       para={para}
       aoMudarPara={(valor) => setPara((m) => { const n = new Map(m); g.cobrancas.forEach((c) => n.set(c.chave, valor)); return n; })}
-      aoAbrir={(c) => registrar([c], 'aberta_no_outlook')}
+      aoAbrir={(c, comCartao) =>
+        registrar(
+          [c],
+          'aberta_no_outlook',
+          comCartao
+            ? `E-mail para ${c.titulo} aberto no Outlook, com o texto e o cartão copiados: clique no corpo do e-mail, cole (Ctrl+V), confira e envie.`
+            : `E-mail para ${c.titulo} aberto no Outlook só com o texto (o navegador não deixou copiar o cartão). Confira e envie.`,
+        )
+      }
       aoDispensar={(lista) => registrar(lista, 'dispensada')}
-      aoCopiar={(c) => copiarTexto(c.corpo).then(() => setOk('Texto copiado.')).catch(() => setErro('O navegador não deixou copiar. Abra "Ver o texto", selecione e copie.'))}
+      aoCopiar={(c) => copiarComCartao(c.corpo).then(() => setOk('Texto com o cartão copiado. Cole no corpo do e-mail (Ctrl+V).')).catch(() => setErro('O navegador não deixou copiar. Abra "Ver o texto", selecione e copie.'))}
     />
   );
 
   return (
     <Pagina
       titulo="Cobranças do dia"
-      apoio="Uma linha por fornecedor com tudo o que há para cobrar dele. Clique no fornecedor para ver cada e-mail, conferir e abrir no Outlook. O que foi aberto ou dispensado sai da lista."
+      apoio="Uma linha por fornecedor com tudo o que há para cobrar dele. Clique no fornecedor para ver cada e-mail. Abrir no Outlook copia o texto com o cartão de visita: no Outlook, clique no corpo do e-mail e cole (Ctrl+V). O que foi aberto ou dispensado sai da lista."
     >
       {erro && <Mensagem tipo="erro" aoFechar={() => setErro(null)}>{erro}</Mensagem>}
       {ok && <Mensagem tipo="ok" aoFechar={() => setOk(null)}>{ok}</Mensagem>}
@@ -217,6 +224,12 @@ const FILTROS: { id: Filtro; rotulo: string; tipos?: TipoCobranca[] }[] = [
   { id: 'obras', rotulo: 'Avisos às obras', tipos: ['retencao_obra'] },
 ];
 
+// Na prévia, o texto vai até "Atenciosamente,"; a assinatura em texto dá lugar ao cartão.
+const semAssinaturaTexto = (corpo: string) => {
+  const i = corpo.lastIndexOf('Atenciosamente,');
+  return i >= 0 ? corpo.slice(0, i + 'Atenciosamente,'.length) : corpo;
+};
+
 const semAcento = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 // ---------------------------------------------------------------- Agrupamento
@@ -277,7 +290,7 @@ function LinhaCobranca({
   aoAlternar: () => void;
   para: Map<string, string>;
   aoMudarPara: (valor: string) => void;
-  aoAbrir: (c: Cobranca) => void;
+  aoAbrir: (c: Cobranca, comCartao: boolean) => void;
   aoDispensar: (lista: Cobranca[]) => void;
   aoCopiar: (c: Cobranca) => void;
 }) {
@@ -348,12 +361,29 @@ function LinhaCobranca({
                     {semEmail ? (
                       <button type="button" className="botao botao-pequeno" disabled>Abrir no Outlook</button>
                     ) : (
-                      <a className="botao botao-pequeno" href={link} onClick={() => aoAbrir(c)}>
+                      <a
+                        className="botao botao-pequeno"
+                        href={link}
+                        onClick={(e) => {
+                          // Copia o e-mail com o cartão e abre o Outlook só com destinatário e assunto.
+                          // Se o navegador não deixar copiar, abre como antes, com o texto no corpo.
+                          e.preventDefault();
+                          copiarComCartao(c.corpo)
+                            .then(() => {
+                              window.location.href = linkOutlook(destino, c.assunto, '');
+                              aoAbrir(c, true);
+                            })
+                            .catch(() => {
+                              window.location.href = link;
+                              aoAbrir(c, false);
+                            });
+                        }}
+                      >
                         Abrir no Outlook
                       </a>
                     )}
                     <button type="button" className="botao botao-secundario botao-pequeno" onClick={() => aoCopiar(c)}>
-                      Copiar texto
+                      Copiar com cartão
                     </button>
                     <button type="button" className="botao botao-discreto botao-pequeno" onClick={() => aoDispensar([c])}>
                       Dispensar
@@ -361,8 +391,8 @@ function LinhaCobranca({
                   </span>
                   <details className="cobranca-ver">
                     <summary>Ver o texto</summary>
-                    <pre className="cobranca-texto">{c.corpo}</pre>
-                    {link.length > LIMITE_LINK && <small className="dica">Texto longo: se o Outlook abrir o e-mail cortado, use "Copiar texto" e cole.</small>}
+                    <pre className="cobranca-texto">{semAssinaturaTexto(c.corpo)}</pre>
+                    <img className="cobranca-cartao" src={CARTAO_ASSINATURA()} alt="Cartão de visita que entra no fim do e-mail" width={462} height={157} />
                   </details>
                 </li>
               );
@@ -383,7 +413,7 @@ function EditarAssinatura({ atual, aoSalvar }: { atual: Assinatura; aoSalvar: (a
   }, [atual]);
   return (
     <details className="ajuda">
-      <summary>Assinatura dos e-mails: {atual.setor}{atual.contato ? `, ${atual.contato}` : ''}</summary>
+      <summary>Assinatura em texto (reserva): {atual.setor}{atual.contato ? `, ${atual.contato}` : ''}</summary>
       <form
         className="em-linha"
         onSubmit={(e) => {
@@ -401,7 +431,7 @@ function EditarAssinatura({ atual, aoSalvar }: { atual: Assinatura; aoSalvar: (a
         </label>
         <button className="botao botao-secundario" type="submit">Salvar</button>
       </form>
-      <p>O nome de quem abre o e-mail entra acima do setor.</p>
+      <p>Os e-mails saem com o cartão de visita. Esta assinatura em texto só entra quando o navegador não deixa copiar o cartão. O nome de quem abre o e-mail entra acima do setor.</p>
     </details>
   );
 }

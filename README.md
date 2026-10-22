@@ -144,6 +144,8 @@ A tela mostra uma linha por fornecedor, com selos de Medição, Documentos e Int
 
 Todos os e-mails dizem que documentos e correções só valem pelo portal. A assinatura (setor, e-mail e telefone) é editada na própria tela de Cobranças.
 
+Os e-mails saem com o **cartão de visita** (`site/public/assinatura/cartao.png`) no lugar da assinatura em texto. Como o link do Outlook só leva texto, **Abrir no Outlook** copia o e-mail com o cartão e abre o Outlook com destinatário e assunto: a pessoa clica no corpo e cola (Ctrl+V). Se o navegador não deixar copiar, o e-mail abre como antes, com o texto e a assinatura em texto. Por enquanto o cartão é um só; depois cada administrativo terá o seu.
+
 Quando há e-mails prontos, aparece um aviso no topo do portal e um contador no menu. Cada e-mail abre no Outlook do computador já preenchido; a pessoa confere e clica em enviar. O que foi aberto ou dispensado fica registrado e não volta. O destinatário da engenharia de cada obra é informado uma vez e fica guardado.
 
 O botão usa o programa de e-mail padrão do Windows. Para ser o Outlook: **Configurações > Aplicativos > Aplicativos padrão > Outlook**, e em **MAILTO** escolher Outlook.
