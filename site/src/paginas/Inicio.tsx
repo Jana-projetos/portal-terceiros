@@ -1,33 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useSessao, type Perfil } from '../lib/sessao';
-import { lerAlocacoesAbertas, lerMinhasEmpresas, resumirPorObra, formatarCnpj, type ResumoObra } from '../lib/consultas';
+import { useSessao } from '../lib/sessao';
+import { lerAlocacoesAbertas, resumirPorObra, type ResumoObra } from '../lib/consultas';
+import { lerObrasDoPainel, lerPainelObra } from '../lib/painelObra';
+import { contarCores, faroisDaObra, ordemCor, pior, rotuloCor, type Cor, type FarolEmpresa } from '../lib/farois';
+import { Farol, LegendaFarois, LinhaFarol, ResumoFarois, SeloFrente } from '../componentes/Farois';
 import { mensagemDeErro } from '../lib/supabase';
 import { Topo } from '../componentes/Topo';
 import { Carregando } from '../componentes/Carregando';
 import { PainelObra } from './PainelObra';
 import { MinhasObras } from './fornecedor/MinhasObras';
 
-const titulos: Record<Exclude<Perfil, 'engenharia'>, { titulo: string; apoio: string; vazio: string }> = {
-  admin: {
-    titulo: 'Situação das obras',
-    apoio: 'Colaboradores alocados em cada obra, sem contar os desligados.',
-    vazio: 'Nenhuma alocação aberta no momento.',
-  },
-  tst: {
-    titulo: 'Suas obras',
-    apoio: 'Colaboradores alocados nas obras sob sua responsabilidade.',
-    vazio: 'Nenhuma obra está ligada ao seu acesso. Peça ao administrativo da Emais para vincular suas obras.',
-  },
-  fornecedor: {
-    titulo: 'Seus colaboradores nas obras',
-    apoio: 'Situação de liberação dos colaboradores da sua empresa em cada obra da Emais.',
-    vazio: 'Sua empresa ainda não tem colaboradores alocados em obras.',
-  },
-};
-
 // Engenharia e TST entram direto no painel da obra com os faróis; o fornecedor, nas suas obras com os faróis;
-// o administrativo continua com o resumo de todas as obras.
+// o administrativo vê todas as obras com os faróis.
 export function Inicio() {
   const { usuario } = useSessao();
   if (usuario?.perfil === 'engenharia' || usuario?.perfil === 'tst') return <PainelObra />;
@@ -35,86 +20,119 @@ export function Inicio() {
   return <InicioPadrao />;
 }
 
+type Obra = {
+  id: string;
+  nome: string;
+  geral: Cor;
+  doc: Cor;
+  int: Cor;
+  med: Cor;
+  farois: FarolEmpresa[];
+  contagem: Record<Cor, number>;
+  numeros: ResumoObra | null;
+};
+
+// Situação das obras (administrativo): uma linha por obra com os faróis; ao clicar, as empresas da obra.
 function InicioPadrao() {
-  const { usuario } = useSessao();
-  const [resumo, setResumo] = useState<ResumoObra[] | null>(null);
-  const [empresas, setEmpresas] = useState<{ razao_social: string; cnpj: string }[]>([]);
+  const [obras, setObras] = useState<Obra[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [aberta, setAberta] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelado = false;
-    Promise.all([lerAlocacoesAbertas(), usuario?.perfil === 'fornecedor' ? lerMinhasEmpresas() : Promise.resolve([])])
-      .then(([linhas, emps]) => {
-        if (cancelado) return;
-        setResumo(resumirPorObra(linhas));
-        setEmpresas(emps);
-      })
-      .catch((e) => !cancelado && setErro(mensagemDeErro(e)));
+    (async () => {
+      const [lista, alocacoes] = await Promise.all([lerObrasDoPainel(), lerAlocacoesAbertas()]);
+      const numeros = new Map(resumirPorObra(alocacoes).map((r) => [r.obraId, r]));
+      const paineis = await Promise.all(lista.map(async (o) => ({ obra: o, painel: await lerPainelObra(o.id) })));
+      const montadas = paineis
+        .map(({ obra, painel }): Obra => {
+          const farois = faroisDaObra(painel.colaboradores, painel.medicoes);
+          return {
+            id: obra.id,
+            nome: obra.nome,
+            geral: pior(...farois.map((f) => f.geral)),
+            doc: pior(...farois.map((f) => f.doc.cor)),
+            int: pior(...farois.map((f) => f.int.cor)),
+            med: pior(...farois.map((f) => f.med.cor)),
+            farois,
+            contagem: contarCores(farois),
+            numeros: numeros.get(obra.id) ?? null,
+          };
+        })
+        .filter((o) => o.farois.length > 0 || o.numeros)
+        .sort((a, b) => ordemCor[a.geral] - ordemCor[b.geral] || a.nome.localeCompare(b.nome, 'pt-BR'));
+      if (cancelado) return;
+      setObras(montadas);
+    })().catch((e) => !cancelado && setErro(mensagemDeErro(e)));
     return () => {
       cancelado = true;
     };
-  }, [usuario?.perfil]);
+  }, []);
 
-  if (!usuario || usuario.perfil === 'engenharia') return null;
-  const textos = titulos[usuario.perfil];
-  const total = resumo && somar(resumo);
+  const empresas = useMemo(() => (obras ?? []).flatMap((o) => o.farois), [obras]);
 
   return (
     <div className="pagina">
       <Topo />
       <main className="conteudo">
         <section className="cabecalho">
-          <h1>{textos.titulo}</h1>
-          <p className="apoio">{textos.apoio}</p>
-          {empresas.length > 0 && (
-            <ul className="empresas">
-              {empresas.map((e) => (
-                <li key={e.cnpj}>
-                  {e.razao_social} <span className="cnpj">{formatarCnpj(e.cnpj)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <h1>Situação das obras</h1>
+          <p className="apoio">Cada obra com os faróis de documentos, integração e medição das empresas que trabalham nela. Os números do topo contam as empresas em cada obra. Clique na obra para ver as empresas.</p>
         </section>
 
         {erro && <p className="aviso aviso-erro" role="alert">{erro}</p>}
-        {!erro && !resumo && <Carregando />}
-        {resumo && resumo.length === 0 && <p className="vazio">{textos.vazio}</p>}
+        {!erro && !obras && <Carregando />}
+        {obras && obras.length === 0 && <p className="vazio">Nenhuma alocação aberta no momento.</p>}
 
-        {resumo && resumo.length > 0 && total && (
+        {obras && obras.length > 0 && (
           <>
-            <ul className="legenda" aria-label="Legenda das barras">
-              <li><i className="cor-liberado" />Liberados</li>
-              <li><i className="cor-pendencia" />Liberados com documento vencido ou faltando</li>
-              <li><i className="cor-analise" />Em análise na Emais</li>
-              <li><i className="cor-fornecedor" />Com pendência para o fornecedor</li>
+            <ResumoFarois contagem={contarCores(empresas)} />
+            <LegendaFarois />
+            <ul className="lista-farois">
+              {obras.map((o) => (
+                <LinhaFarol
+                  key={o.id}
+                  id={o.id}
+                  geral={o.geral}
+                  titulo={o.nome}
+                  subtitulo={o.numeros ? numerosDaObra(o.numeros) : undefined}
+                  manchete={mancheteDaObra(o)}
+                  doc={o.doc}
+                  int={o.int}
+                  med={o.med}
+                  aberta={aberta === o.id}
+                  aoAlternar={() => setAberta(aberta === o.id ? null : o.id)}
+                >
+                  {o.farois.length === 0 ? (
+                    <p className="frente">Nenhuma empresa com colaborador ou medição nesta obra.</p>
+                  ) : (
+                    <ul className="empresas-obra">
+                      {o.farois.map((f) => (
+                        <li key={f.empresaId} className="empresa-obra">
+                          <span className="tarefa-texto">
+                            <Farol cor={f.geral} rotulo={rotuloCor[f.geral]} />
+                            <span>
+                              <strong>{f.empresa}</strong>
+                              {f.manchete}
+                            </span>
+                          </span>
+                          <span className="linha-farol-frentes">
+                            <SeloFrente nome="Documentos" cor={f.doc.cor} />
+                            <SeloFrente nome="Integração" cor={f.int.cor} />
+                            <SeloFrente nome="Medição" cor={f.med.cor} />
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="linha-botoes">
+                    <Link className="botao botao-pequeno" to={`/painel-obra?obra=${o.id}`}>Abrir o painel da obra</Link>
+                    <Link className="botao botao-secundario botao-pequeno" to={`/colaboradores?obra=${o.id}`}>Ver colaboradores</Link>
+                  </p>
+                </LinhaFarol>
+              ))}
             </ul>
-
-            <div className="tabela-rolagem">
-              <table className="tabela">
-                <thead>
-                  <tr>
-                    <th scope="col">Obra</th>
-                    <th scope="col" className="num">Ativos</th>
-                    <th scope="col" className="num">Liberados</th>
-                    <th scope="col" className="num">Liberados com pendência</th>
-                    <th scope="col" className="num">Em análise</th>
-                    <th scope="col" className="num">Com o fornecedor</th>
-                    <th scope="col" className="col-barra"><span className="sr">Proporção</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resumo.map((r) => (
-                    <Linha key={r.obra} r={r} comLink={usuario.perfil === 'admin' || usuario.perfil === 'tst'} />
-                  ))}
-                </tbody>
-                {resumo.length > 1 && (
-                  <tfoot>
-                    <Linha r={total} />
-                  </tfoot>
-                )}
-              </table>
-            </div>
+            <p className="dica">Bloqueios primeiro, depois pendências, depois as obras em dia. O farol da obra é o pior entre as empresas dela.</p>
           </>
         )}
       </main>
@@ -122,46 +140,21 @@ function InicioPadrao() {
   );
 }
 
-function Linha({ r, comLink = false }: { r: ResumoObra; comLink?: boolean }) {
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+
+function numerosDaObra(r: ResumoObra): string {
+  const partes = [plural(r.ativos, 'ativo', 'ativos'), plural(r.liberados, 'liberado', 'liberados')];
   const emAnalise = r.emAnalise + r.aguardandoTst;
-  const semPendencia = r.liberados - r.liberadosComPendencia;
-  const pct = (n: number) => `${r.ativos ? (n / r.ativos) * 100 : 0}%`;
-  return (
-    <tr>
-      <th scope="row">{comLink && r.obraId ? <Link className="link" to={`/colaboradores?obra=${r.obraId}`}>{r.obra}</Link> : r.obra}</th>
-      <td className="num" data-rotulo="Ativos">{r.ativos}</td>
-      <td className="num" data-rotulo="Liberados">{r.liberados}</td>
-      <td className="num" data-rotulo="Liberados com pendência">{r.liberadosComPendencia || <span className="zero">0</span>}</td>
-      <td className="num" data-rotulo="Em análise">{emAnalise || <span className="zero">0</span>}</td>
-      <td className="num" data-rotulo="Com o fornecedor">{r.comFornecedor || <span className="zero">0</span>}</td>
-      <td className="col-barra">
-        <div
-          className="barra"
-          role="img"
-          aria-label={`${semPendencia} liberados sem pendência, ${r.liberadosComPendencia} liberados com pendência, ${emAnalise} em análise e ${r.comFornecedor} com o fornecedor`}
-        >
-          <span className="cor-liberado" style={{ width: pct(semPendencia) }} />
-          <span className="cor-pendencia" style={{ width: pct(r.liberadosComPendencia) }} />
-          <span className="cor-analise" style={{ width: pct(emAnalise) }} />
-          <span className="cor-fornecedor" style={{ width: pct(r.comFornecedor) }} />
-        </div>
-      </td>
-    </tr>
-  );
+  if (emAnalise) partes.push(`${emAnalise} em análise`);
+  if (r.comFornecedor) partes.push(`${r.comFornecedor} com o fornecedor`);
+  return partes.join(' · ');
 }
 
-function somar(lista: ResumoObra[]): ResumoObra {
-  return lista.reduce(
-    (t, r) => ({
-      obraId: null,
-      obra: 'Total',
-      ativos: t.ativos + r.ativos,
-      liberados: t.liberados + r.liberados,
-      liberadosComPendencia: t.liberadosComPendencia + r.liberadosComPendencia,
-      comFornecedor: t.comFornecedor + r.comFornecedor,
-      emAnalise: t.emAnalise + r.emAnalise,
-      aguardandoTst: t.aguardandoTst + r.aguardandoTst,
-    }),
-    { obraId: null, obra: 'Total', ativos: 0, liberados: 0, liberadosComPendencia: 0, comFornecedor: 0, emAnalise: 0, aguardandoTst: 0 },
-  );
+function mancheteDaObra(o: Obra): string {
+  const c = o.contagem;
+  const partes: string[] = [];
+  if (c.vermelho) partes.push(`${plural(c.vermelho, 'empresa', 'empresas')} com bloqueio`);
+  if (c.amarelo) partes.push(`${plural(c.amarelo, 'empresa', 'empresas')} com pendência`);
+  if (c.verde) partes.push(`${plural(c.verde, 'empresa', 'empresas')} em dia`);
+  return partes.length ? partes.join(', ') : 'Nenhuma empresa na obra';
 }
