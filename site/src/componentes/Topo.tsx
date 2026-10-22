@@ -48,8 +48,7 @@ export function Topo() {
       </div>
       {ehTst && (
         <nav className="menu" aria-label="Seções do TST">
-          <NavLink to="/" end>Obras</NavLink>
-          <NavLink to="/painel-obra">Painel da obra</NavLink>
+          <NavLink to="/" end>Painel da obra</NavLink>
           <NavLink to="/colaboradores?situacao=tst" className={({ isActive }) => (isActive && naValidacao ? 'active' : undefined)}>
             Para validar
             {naFila ? <span className="contador" aria-label={`${naFila} para validar`}>{naFila}</span> : null}

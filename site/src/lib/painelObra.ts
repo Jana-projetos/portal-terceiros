@@ -3,10 +3,15 @@ import { diasAte, hojeIso } from './formato';
 import type { StatusAlocacao } from './consultas';
 import type { StatusMedicao } from './medicao';
 
-// Painel de acompanhamento da obra (engenharia, TST e administrativo). Só leitura.
+// Painel de acompanhamento da obra (engenharia, TST, administrativo e, só com as próprias empresas, fornecedor). Só leitura.
 // Os dados vêm de uma função do banco que confere a obra do acesso e não devolve CPF nem arquivos.
 
-export type PendenciaDoc = { documento: string; situacao: 'nao_enviado' | 'devolvido' | 'vencido' | 'em_analise'; vencimento: string | null };
+export type PendenciaDoc = {
+  documento: string;
+  grupo?: 'empresa' | 'colaborador' | 'obra';
+  situacao: 'nao_enviado' | 'devolvido' | 'vencido' | 'em_analise';
+  vencimento: string | null;
+};
 
 export type ColaboradorObra = {
   alocacao_id: string;
@@ -19,7 +24,7 @@ export type ColaboradorObra = {
   vencimento_integracao: string | null;
   liberado_em: string | null;
   pendencias: PendenciaDoc[];
-  a_vencer: { documento: string; vencimento: string }[];
+  a_vencer: { documento: string; grupo?: 'empresa' | 'colaborador' | 'obra'; vencimento: string }[];
 };
 
 export type MedicaoObra = {

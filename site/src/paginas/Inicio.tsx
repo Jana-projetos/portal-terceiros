@@ -6,6 +6,7 @@ import { mensagemDeErro } from '../lib/supabase';
 import { Topo } from '../componentes/Topo';
 import { Carregando } from '../componentes/Carregando';
 import { PainelObra } from './PainelObra';
+import { MinhasObras } from './fornecedor/MinhasObras';
 
 const titulos: Record<Exclude<Perfil, 'engenharia'>, { titulo: string; apoio: string; vazio: string }> = {
   admin: {
@@ -25,10 +26,13 @@ const titulos: Record<Exclude<Perfil, 'engenharia'>, { titulo: string; apoio: st
   },
 };
 
-// A engenharia entra direto no painel da obra; os demais perfis veem o resumo por obra.
+// Engenharia e TST entram direto no painel da obra com os faróis; o fornecedor, nas suas obras com os faróis;
+// o administrativo continua com o resumo de todas as obras.
 export function Inicio() {
   const { usuario } = useSessao();
-  return usuario?.perfil === 'engenharia' ? <PainelObra /> : <InicioPadrao />;
+  if (usuario?.perfil === 'engenharia' || usuario?.perfil === 'tst') return <PainelObra />;
+  if (usuario?.perfil === 'fornecedor') return <MinhasObras />;
+  return <InicioPadrao />;
 }
 
 function InicioPadrao() {

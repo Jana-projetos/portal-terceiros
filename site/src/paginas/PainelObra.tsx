@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useSessao } from '../lib/sessao';
+import { DetalheFrentes, LegendaFarois, LinhaFarol, ResumoFarois } from '../componentes/Farois';
+import { contarCores, faroisDaObra } from '../lib/farois';
 import { Pagina, Mensagem } from '../componentes/Pagina';
 import { Carregando } from '../componentes/Carregando';
 import { Cartao } from '../componentes/Graficos';
@@ -52,7 +55,7 @@ export function PainelObra() {
   return (
     <Pagina
       titulo={painel ? painel.obra : 'Painel da obra'}
-      apoio="Acompanhamento dos terceiros da obra: quem pode trabalhar, a situação dos documentos, a integração e a medição de cada empresa, com o que liberar para pagamento."
+      apoio="Situação de cada empresa da obra em documentos, integração e medição. Clique numa empresa para ver o que é cada pendência."
       acoes={
         obras && obras.length > 1 ? (
           <label className="campo">
@@ -69,8 +72,63 @@ export function PainelObra() {
       {erro && <Mensagem tipo="erro" aoFechar={() => setErro(null)}>{erro}</Mensagem>}
       {obras && obras.length === 0 && <p className="vazio">Nenhuma obra está ligada ao seu acesso. Peça ao administrativo da Emais para incluir as suas obras.</p>}
       {obraId && !painel && !erro && <Carregando />}
-      {painel && <Conteudo painel={painel} />}
+      {painel && (
+        <>
+          <FaroisDaObra painel={painel} obraId={obraId} />
+          <details className="detalhes-obra">
+            <summary>Mais detalhes da obra: pagamento por mês, histórico da medição, documentos e colaboradores</summary>
+            <Conteudo painel={painel} />
+          </details>
+        </>
+      )}
     </Pagina>
+  );
+}
+
+// Faróis: uma linha por empresa, o pior farol primeiro. Ao clicar, o que está por trás de cada um.
+function FaroisDaObra({ painel, obraId }: { painel: Painel; obraId: string }) {
+  const { usuario } = useSessao();
+  const farois = useMemo(() => faroisDaObra(painel.colaboradores, painel.medicoes), [painel]);
+  const [aberta, setAberta] = useState<string | null>(null);
+  const contagem = contarCores(farois);
+  if (!farois.length) return <p className="vazio">Nenhuma empresa com colaborador nesta obra.</p>;
+  return (
+    <section aria-label="Faróis das empresas">
+      <ResumoFarois contagem={contagem} />
+      <LegendaFarois />
+      <ul className="lista-farois">
+        {farois.map((f) => (
+          <LinhaFarol
+            key={f.empresaId}
+            id={f.empresaId}
+            geral={f.geral}
+            titulo={f.empresa}
+            manchete={f.manchete}
+            doc={f.doc.cor}
+            int={f.int.cor}
+            med={f.med.cor}
+            aberta={aberta === f.empresaId}
+            aoAlternar={() => setAberta(aberta === f.empresaId ? null : f.empresaId)}
+          >
+            <DetalheFrentes
+              doc={f.doc}
+              int={f.int}
+              med={f.med}
+              extra={
+                (usuario?.perfil === 'tst' || usuario?.perfil === 'admin') && f.aguardandoTst > 0 ? (
+                  <p className="linha-botoes">
+                    <Link className="botao botao-pequeno" to={`/colaboradores?situacao=tst&obra=${obraId}&busca=${encodeURIComponent(f.empresa)}`}>
+                      Validar {f.aguardandoTst} {f.aguardandoTst === 1 ? 'colaborador' : 'colaboradores'}
+                    </Link>
+                  </p>
+                ) : undefined
+              }
+            />
+          </LinhaFarol>
+        ))}
+      </ul>
+      <p className="dica">Bloqueios primeiro, depois pendências, depois as empresas em dia. Integração conta só os liberados pelo portal, de setembro de 2026 em diante.</p>
+    </section>
   );
 }
 

@@ -37,6 +37,7 @@ Portal do Grupo Emais para os fornecedores das obras cadastrarem colaboradores e
 | `20261021_016_painel_obra_historico.sql` | Painel da obra com o histórico da medição, incluindo os meses da planilha das empresas que trabalham na obra |
 | `20261021_017_treinamentos_por_colaborador.sql` | Exceção da NR por colaborador: o administrativo torna uma NR obrigatória ou não obrigatória fora da regra da função, com motivo registrado no histórico |
 | `20261021_018_colaborador_datas.sql` | Data de admissão (registro) e data de nascimento no cadastro do colaborador, com conferência das datas |
+| `20261022_019_painel_farois.sql` | Painel com faróis também para o fornecedor (só as próprias empresas) e pendências com o grupo do documento (empresa ou colaborador) |
 
 Os arquivos usados para carregar as planilhas `CONTROLE_DE_INTEGRAÇÃO` e de medição mensal não estão neste repositório, porque têm CPFs. O repositório é público: nenhum dado pessoal, senha ou chave secreta entra aqui.
 
@@ -156,6 +157,18 @@ Nome, CPF, função, data de admissão (registro) e data de nascimento. As duas 
 A função define as NRs obrigatórias. Em **Colaboradores**, no detalhe do colaborador, o administrativo usa **Editar cadastro** para corrigir nome, CPF e função e para marcar, NR por NR, se ela se aplica àquele colaborador. Quando a marcação foge da regra da função, o portal pede o motivo, que fica no histórico do colaborador, e mostra o ajuste no detalhe (também para o TST). Desmarcar o ajuste volta a valer a função.
 
 A mudança vale na hora para as pendências, a liberação, o "O que falta" do fornecedor e o Painel da obra. Só as NRs podem ser ajustadas assim; os demais documentos seguem a regra geral. Só o administrativo grava.
+
+## Faróis do painel de obras
+
+Engenharia e TST entram direto no **Painel da obra**; o fornecedor, em **Suas obras**. Cada empresa (ou, para o fornecedor, cada obra) tem um farol geral e três faróis menores: **Documentos**, **Integração** e **Medição**. Clicando, aparece o que está por trás de cada um; para o fornecedor, a lista "O que fazer para ficar verde", com o botão de cada ação.
+
+| | Verde | Amarelo | Vermelho |
+|---|---|---|---|
+| Documentos | Liberados com tudo em dia | Documento vencendo em 30 dias, colaborador aguardando liberação, documento da empresa pendente sem liberados | Liberado trabalhando com documento obrigatório faltando ou vencido (ou documento da empresa faltando com gente liberada) |
+| Integração | Liberados com integração em dia | Liberado pelo portal (de setembro de 2026 em diante) sem integração registrada, ou integração vencida ou vencendo em 30 dias | Não bloqueia |
+| Medição | Mês aprovado, ou mês corrente no prazo do dia 25 | Depois do dia 25 na tolerância, em conferência, com data combinada ou devolvida | Pagamento retido: qualquer mês não aprovado depois do dia 30 ou da data combinada |
+
+O farol geral é o pior dos três. Os documentos da empresa (ex.: Cartão CNPJ) contam uma vez só. As regras ficam em `site/src/lib/farois.ts`. Os detalhes que já existiam (pagamento por mês, histórico da medição, documentos e colaboradores) continuam no painel, em "Mais detalhes da obra".
 
 ## Painel da obra (engenharia)
 

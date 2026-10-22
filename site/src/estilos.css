@@ -1986,3 +1986,266 @@ button.celula:hover {
     margin-left: 0;
   }
 }
+
+/* Faróis do painel de obras */
+.farol {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.farol-grande {
+  width: 22px;
+  height: 22px;
+}
+
+.farol-verde { background: #1d7a4a; }
+.farol-amarelo { background: #e8b100; box-shadow: inset 0 0 0 2px #b88a00; }
+.farol-vermelho { background: #c23b22; }
+.farol-cinza { background: #c9d3d1; }
+
+.selo-farol {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.selo-farol-verde { background: #e3f2e9; color: #145c37; }
+.selo-farol-amarelo { background: #fdf3d0; color: #6b4d00; }
+.selo-farol-vermelho { background: #fbe5e0; color: #8f2512; }
+.selo-farol-cinza { background: #eef2f1; color: #4d5f5d; }
+
+.legenda-farois {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  font-size: 0.9rem;
+  color: #3d5250;
+}
+
+.legenda-farois li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.resumo-farois {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.resumo-farol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-top-width: 5px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: var(--suave);
+}
+
+.resumo-farol strong {
+  font-size: 2.1rem;
+  line-height: 1;
+  color: var(--tinta);
+}
+
+.resumo-rotulo { font-weight: 600; }
+.resumo-vermelho { border-top-color: #c23b22; }
+.resumo-vermelho .resumo-rotulo { color: #8f2512; }
+.resumo-amarelo { border-top-color: #e8b100; }
+.resumo-amarelo .resumo-rotulo { color: #6b4d00; }
+.resumo-verde { border-top-color: #1d7a4a; }
+.resumo-verde .resumo-rotulo { color: #145c37; }
+
+.lista-farois {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.linha-farol-botao {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 16px 20px;
+  background: var(--superficie);
+  border: 1px solid var(--linha);
+  border-radius: 10px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.linha-farol-botao:hover { border-color: #8fb0aa; }
+
+.linha-farol-botao:focus-visible {
+  outline: 3px solid var(--petroleo);
+  outline-offset: 2px;
+}
+
+.linha-farol-aberta .linha-farol-botao {
+  border-color: var(--petroleo);
+  border-radius: 10px 10px 0 0;
+}
+
+.linha-farol-texto {
+  flex: 999 1 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.linha-farol-texto strong { font-size: 1.05rem; }
+
+.linha-farol-manchete {
+  font-size: 0.9rem;
+  color: var(--suave);
+}
+
+.linha-farol-frentes {
+  flex: 1 1 340px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.linha-farol-detalhe {
+  padding: 6px 20px 20px;
+  background: var(--superficie);
+  border: 1px solid var(--petroleo);
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+}
+
+.frentes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.frente {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+.frente h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.frente p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.tarefas {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tarefa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e3e9e8;
+  border-radius: 8px;
+}
+
+.tarefa-texto {
+  flex: 999 1 360px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.tarefa-texto .farol { margin-top: 3px; }
+
+.tarefa-texto span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9rem;
+  color: var(--suave);
+}
+
+.tarefa-texto strong {
+  font-size: 0.95rem;
+  color: var(--tinta);
+}
+
+.faixa-retido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px 20px;
+  background: #fbe5e0;
+  border: 1px solid #e7b3a7;
+  border-radius: 10px;
+}
+
+.faixa-retido > div {
+  flex: 999 1 420px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.faixa-retido strong {
+  display: block;
+  font-size: 1.05rem;
+  color: #8f2512;
+}
+
+.detalhes-obra {
+  margin-top: 32px;
+  border-top: 1px solid var(--linha);
+  padding-top: 8px;
+}
+
+.detalhes-obra > summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-weight: 600;
+  color: var(--petroleo);
+  font-size: 1.05rem;
+}
