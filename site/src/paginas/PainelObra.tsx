@@ -32,6 +32,9 @@ const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0);
 const trava = (c: ColaboradorObra) => c.pendencias.some((p) => p.situacao !== 'em_analise');
 
 export function PainelObra() {
+  const { usuario } = useSessao();
+  // Os detalhes (pagamento por mês, histórico da medição, documentos e colaboradores) ficam só para o administrativo.
+  const comDetalhes = usuario?.perfil === 'admin';
   const [params, setParams] = useSearchParams();
   const [obras, setObras] = useState<{ id: string; nome: string }[] | null>(null);
   const [painel, setPainel] = useState<Painel | null>(null);
@@ -75,10 +78,12 @@ export function PainelObra() {
       {painel && (
         <>
           <FaroisDaObra painel={painel} obraId={obraId} />
-          <details className="detalhes-obra">
-            <summary>Mais detalhes da obra: pagamento por mês, histórico da medição, documentos e colaboradores</summary>
-            <Conteudo painel={painel} />
-          </details>
+          {comDetalhes && (
+            <details className="detalhes-obra">
+              <summary>Mais detalhes da obra: pagamento por mês, histórico da medição, documentos e colaboradores</summary>
+              <Conteudo painel={painel} />
+            </details>
+          )}
         </>
       )}
     </Pagina>

@@ -168,7 +168,7 @@ Engenharia e TST entram direto no **Painel da obra**; o fornecedor, em **Suas ob
 | Integração | Liberados com integração em dia | Liberado pelo portal (de setembro de 2026 em diante) sem integração registrada, ou integração vencida ou vencendo em 30 dias | Não bloqueia |
 | Medição | Mês aprovado, ou mês corrente no prazo do dia 25 | Depois do dia 25 na tolerância, em conferência, com data combinada ou devolvida | Pagamento retido: qualquer mês não aprovado depois do dia 30 ou da data combinada |
 
-O farol geral é o pior dos três. Os documentos da empresa (ex.: Cartão CNPJ) contam uma vez só. As regras ficam em `site/src/lib/farois.ts`. Os detalhes que já existiam (pagamento por mês, histórico da medição, documentos e colaboradores) continuam no painel, em "Mais detalhes da obra".
+O farol geral é o pior dos três. Os documentos da empresa (ex.: Cartão CNPJ) contam uma vez só. As regras ficam em `site/src/lib/farois.ts`. Os detalhes que já existiam (pagamento por mês, histórico da medição, documentos e colaboradores) continuam no painel, em "Mais detalhes da obra", só para o administrativo; engenharia e TST veem apenas os faróis.
 
 ## Painel da obra (engenharia)
 
