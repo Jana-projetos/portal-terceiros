@@ -5,6 +5,8 @@ import { mensagemDeErro } from '../../lib/supabase';
 import { useSessao } from '../../lib/sessao';
 import { data, hojeIso } from '../../lib/formato';
 import { copiarTexto, linkOutlook } from '../../lib/admin';
+import { Farol, SeloFrente } from '../../componentes/Farois';
+import type { Cor } from '../../lib/farois';
 import { guardarAssinatura, guardarDestinatariosObra, montarFila, registrarCobrancas, titulosGrupo, type Assinatura, type Cobranca, type Fila, type TipoCobranca } from '../../lib/cobrancas';
 
 const ORDEM: TipoCobranca[] = ['lembrete_medicao', 'notificacao_medicao', 'cobranca_medicao', 'retencao_obra', 'vencimento_documento', 'integracao_documentos'];
@@ -53,10 +55,30 @@ export function Cobrancas() {
     }
   }
 
+  // Uma linha por fornecedor (medição, documentos e integração juntos) e uma por obra (aviso de retenção).
+  const grupos = useMemo(() => agrupar(abertas), [abertas]);
+  const fornecedores = grupos.filter((g) => g.tipo === 'fornecedor');
+  const obras = grupos.filter((g) => g.tipo === 'obra');
+  const [aberta, setAberta] = useState<string | null>(null);
+
+  const linha = (g: Grupo) => (
+    <LinhaCobranca
+      key={g.id}
+      grupo={g}
+      aberta={aberta === g.id}
+      aoAlternar={() => setAberta(aberta === g.id ? null : g.id)}
+      para={para}
+      aoMudarPara={(valor) => setPara((m) => { const n = new Map(m); g.cobrancas.forEach((c) => n.set(c.chave, valor)); return n; })}
+      aoAbrir={(c) => registrar([c], 'aberta_no_outlook')}
+      aoDispensar={(lista) => registrar(lista, 'dispensada')}
+      aoCopiar={(c) => copiarTexto(c.corpo).then(() => setOk('Texto copiado.')).catch(() => setErro('O navegador não deixou copiar. Abra "Ver o texto", selecione e copie.'))}
+    />
+  );
+
   return (
     <Pagina
       titulo="Cobranças do dia"
-      apoio="O portal monta os e-mails no calendário combinado. Confira cada um, clique em Abrir no Outlook e envie de lá. O que foi aberto ou dispensado sai da lista."
+      apoio="Uma linha por fornecedor com tudo o que há para cobrar dele. Clique no fornecedor para ver cada e-mail, conferir e abrir no Outlook. O que foi aberto ou dispensado sai da lista."
     >
       {erro && <Mensagem tipo="erro" aoFechar={() => setErro(null)}>{erro}</Mensagem>}
       {ok && <Mensagem tipo="ok" aoFechar={() => setOk(null)}>{ok}</Mensagem>}
@@ -64,12 +86,32 @@ export function Cobrancas() {
 
       {fila && (
         <>
-          <div className="bloco-destaque">
-            <strong>
-              Hoje, {data(hojeIso())}: {abertas.length === 0 ? 'nenhum e-mail para enviar' : `${abertas.length} ${abertas.length === 1 ? 'e-mail pronto' : 'e-mails prontos'}`}.
-            </strong>{' '}
-            Medição: lembrete no dia 20, notificação de atraso no dia 26 com tolerância até o dia 30, e retenção com aviso à obra depois disso. Documentos: em 30 dias, em 15 dias e
-            quando vencem. Integração: toda segunda-feira. Próxima rodada da medição: {data(fila.proxima)}.
+          <div className="resumo-farois">
+            <div className="resumo-farol resumo-vermelho">
+              <span className="resumo-rotulo">Urgente</span>
+              <strong>{grupos.filter((g) => g.urgente).length}</strong>
+              <span>pagamento retido, aviso à obra ou documento já vencido</span>
+            </div>
+            <div className="resumo-farol resumo-amarelo">
+              <span className="resumo-rotulo">Lembretes e avisos</span>
+              <strong>{grupos.filter((g) => !g.urgente).length}</strong>
+              <span>prazo da medição, documentos vencendo e integração</span>
+            </div>
+            <div className="resumo-farol resumo-verde">
+              <span className="resumo-rotulo">E-mails prontos hoje</span>
+              <strong>{abertas.length}</strong>
+              <span>{data(hojeIso())}. Próxima rodada da medição: {data(fila.proxima)}</span>
+            </div>
+          </div>
+
+          <div className="calendario-cobrancas">
+            <details className="ajuda">
+              <summary>Calendário das cobranças</summary>
+              <p>
+                Medição: lembrete no dia 20, notificação de atraso no dia 26 com tolerância até o dia 30, e retenção com aviso à obra depois disso. Documentos dos liberados: em 30
+                dias, em 15 dias e quando vencem. Integração: toda segunda-feira.
+              </p>
+            </details>
             <EditarAssinatura
               atual={fila.assinatura}
               aoSalvar={async (a) => {
@@ -92,74 +134,24 @@ export function Cobrancas() {
             </details>
           </div>
 
-          {ORDEM.map((tipo) => {
-            const doGrupo = abertas.filter((c) => c.tipo === tipo);
-            if (doGrupo.length === 0) return null;
-            return (
-              <section key={tipo} className="bloco">
-                <div className="barra-lista">
-                  <h2 className="bloco-titulo">
-                    {titulosGrupo[tipo].titulo} <span className="sub">{doGrupo.length}</span>
-                  </h2>
-                  <button type="button" className="botao botao-discreto botao-pequeno" onClick={() => registrar(doGrupo, 'dispensada')}>
-                    Dispensar todos deste grupo
-                  </button>
-                </div>
-                <p className="dica">{titulosGrupo[tipo].apoio}</p>
-                <ul className="lista-cobrancas">
-                  {doGrupo.map((c) => {
-                    const destino = para.get(c.chave) ?? '';
-                    const link = linkOutlook(destino, c.assunto, c.corpo);
-                    const semEmail = !destino.includes('@');
-                    return (
-                      <li key={c.chave} className="cobranca">
-                        <div className="cobranca-topo">
-                          <strong>{c.titulo}</strong>
-                          <span className="sub">{c.resumo}</span>
-                        </div>
-                        <label className="campo campo-compacto">
-                          <span>Para</span>
-                          <input
-                            type="text"
-                            value={destino}
-                            placeholder={c.tipo === 'retencao_obra' ? 'e-mail da engenharia da obra' : 'e-mail do fornecedor'}
-                            aria-invalid={semEmail}
-                            onChange={(e) => setPara((m) => new Map(m).set(c.chave, e.target.value))}
-                          />
-                          {semEmail && <small className="campo-erro">{c.tipo === 'retencao_obra' ? 'Informe quem recebe nesta obra. Fica guardado para os próximos meses.' : 'Empresa sem e-mail cadastrado. Informe para abrir.'}</small>}
-                        </label>
-                        <p className="cobranca-assunto"><span className="sub">Assunto</span> {c.assunto}</p>
-                        <details>
-                          <summary>Ver o texto</summary>
-                          <pre className="cobranca-texto">{c.corpo}</pre>
-                        </details>
-                        {link.length > LIMITE_LINK && <small className="dica">Texto longo: se o Outlook abrir o e-mail cortado, use "Copiar texto" e cole.</small>}
-                        <div className="linha-botoes">
-                          {semEmail ? (
-                            <button type="button" className="botao" disabled>Abrir no Outlook</button>
-                          ) : (
-                            <a className="botao" href={link} onClick={() => registrar([c], 'aberta_no_outlook')}>
-                              Abrir no Outlook
-                            </a>
-                          )}
-                          <button
-                            type="button"
-                            className="botao botao-secundario"
-                            onClick={() => copiarTexto(c.corpo).then(() => setOk('Texto copiado.')).catch(() => setErro('O navegador não deixou copiar. Abra "Ver o texto", selecione e copie.'))}
-                          >
-                            Copiar texto
-                          </button>
-                          <button type="button" className="botao botao-discreto" onClick={() => registrar([c], 'dispensada')}>
-                            Dispensar
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            );
-          })}
+          {fornecedores.length > 0 && (
+            <section className="bloco">
+              <h2 className="bloco-titulo">
+                Fornecedores <span className="sub">{fornecedores.length}</span>
+              </h2>
+              <ul className="lista-farois">{fornecedores.map(linha)}</ul>
+            </section>
+          )}
+
+          {obras.length > 0 && (
+            <section className="bloco">
+              <h2 className="bloco-titulo">
+                Avisos de retenção para as obras <span className="sub">{obras.length}</span>
+              </h2>
+              <p className="dica">{titulosGrupo.retencao_obra.apoio}</p>
+              <ul className="lista-farois">{obras.map(linha)}</ul>
+            </section>
+          )}
 
           {abertas.length === 0 && (
             <p className="vazio">Tudo em dia por aqui. Os próximos e-mails aparecem sozinhos quando chegar a data.</p>
@@ -167,6 +159,161 @@ export function Cobrancas() {
         </>
       )}
     </Pagina>
+  );
+}
+
+// ---------------------------------------------------------------- Agrupamento
+
+type Frente = 'Medição' | 'Documentos' | 'Integração';
+
+type Grupo = {
+  id: string;
+  tipo: 'fornecedor' | 'obra';
+  titulo: string;
+  urgente: boolean;
+  frentes: { nome: Frente; cor: Cor }[];
+  cobrancas: Cobranca[];
+};
+
+const frenteDe = (t: TipoCobranca): Frente => (t === 'vencimento_documento' ? 'Documentos' : t === 'integracao_documentos' ? 'Integração' : 'Medição');
+const ORDEM_FRENTES: Frente[] = ['Medição', 'Documentos', 'Integração'];
+
+// Nome curto do e-mail dentro da linha do fornecedor.
+const rotuloTipo: Record<TipoCobranca, string> = {
+  lembrete_medicao: 'Medição: lembrete do prazo (dia 25)',
+  notificacao_medicao: 'Medição: notificação de atraso',
+  cobranca_medicao: 'Medição: pagamento retido',
+  retencao_obra: 'Aviso de retenção para a engenharia',
+  vencimento_documento: 'Documentos vencendo',
+  integracao_documentos: 'Integração: colaboradores sem liberação',
+};
+
+function agrupar(lista: Cobranca[]): Grupo[] {
+  const mapa = new Map<string, Grupo>();
+  for (const c of lista) {
+    const ehObra = c.tipo === 'retencao_obra';
+    const id = ehObra ? `obra|${c.obraId ?? c.chave}` : `empresa|${c.registros[0]?.empresa_id ?? c.titulo}`;
+    const g = mapa.get(id) ?? { id, tipo: ehObra ? 'obra' : 'fornecedor', titulo: c.titulo, urgente: false, frentes: [], cobrancas: [] };
+    g.cobrancas.push(c);
+    g.urgente ||= !!c.urgente;
+    mapa.set(id, g);
+  }
+  for (const g of mapa.values()) {
+    g.cobrancas.sort((a, b) => ORDEM.indexOf(a.tipo) - ORDEM.indexOf(b.tipo));
+    if (g.tipo === 'fornecedor') {
+      g.frentes = ORDEM_FRENTES.flatMap((nome) => {
+        const doTipo = g.cobrancas.filter((c) => frenteDe(c.tipo) === nome);
+        return doTipo.length ? [{ nome, cor: (doTipo.some((c) => c.urgente) ? 'vermelho' : 'amarelo') as Cor }] : [];
+      });
+    }
+  }
+  return [...mapa.values()].sort((a, b) => Number(b.urgente) - Number(a.urgente) || a.titulo.localeCompare(b.titulo, 'pt-BR'));
+}
+
+// ---------------------------------------------------------------- Linha
+
+function LinhaCobranca({
+  grupo, aberta, aoAlternar, para, aoMudarPara, aoAbrir, aoDispensar, aoCopiar,
+}: {
+  grupo: Grupo;
+  aberta: boolean;
+  aoAlternar: () => void;
+  para: Map<string, string>;
+  aoMudarPara: (valor: string) => void;
+  aoAbrir: (c: Cobranca) => void;
+  aoDispensar: (lista: Cobranca[]) => void;
+  aoCopiar: (c: Cobranca) => void;
+}) {
+  const idDetalhe = `cobranca-${grupo.id.replace(/[^a-z0-9]/gi, '')}`;
+  const destino = para.get(grupo.cobrancas[0].chave) ?? '';
+  const semEmail = !destino.includes('@');
+  const ehObra = grupo.tipo === 'obra';
+  const n = grupo.cobrancas.length;
+  const resumo = grupo.cobrancas.map((c) => (ehObra ? c.resumo : `${frenteDe(c.tipo)}: ${c.resumo}`)).join(' · ');
+  const cor: Cor = grupo.urgente ? 'vermelho' : 'amarelo';
+
+  return (
+    <li className={`linha-farol${aberta ? ' linha-farol-aberta' : ''}`}>
+      <button type="button" className="linha-farol-botao" aria-expanded={aberta} aria-controls={idDetalhe} onClick={aoAlternar}>
+        <Farol cor={cor} grande rotulo={grupo.urgente ? 'Urgente' : 'Lembrete'} />
+        <span className="linha-farol-texto">
+          <strong>{grupo.titulo}</strong>
+          <span className="linha-farol-manchete">{resumo}</span>
+          {semEmail && <small className="campo-erro">{ehObra ? 'Sem destinatário da engenharia' : 'Sem e-mail cadastrado'}</small>}
+        </span>
+        <span className="linha-farol-frentes">
+          {grupo.frentes.map((f) => (
+            <SeloFrente key={f.nome} nome={f.nome} cor={f.cor} />
+          ))}
+          <span className="contagem-emails">{n === 1 ? '1 e-mail' : `${n} e-mails`}</span>
+        </span>
+      </button>
+
+      {aberta && (
+        <div className="linha-farol-detalhe" id={idDetalhe}>
+          <div className="cobranca-para">
+            <label className="campo campo-compacto">
+              <span>Para</span>
+              <input
+                type="text"
+                value={destino}
+                placeholder={ehObra ? 'e-mail da engenharia da obra' : 'e-mail do fornecedor'}
+                aria-invalid={semEmail}
+                onChange={(e) => aoMudarPara(e.target.value)}
+              />
+              {semEmail && (
+                <small className="campo-erro">
+                  {ehObra ? 'Informe quem recebe nesta obra. Fica guardado para os próximos meses.' : 'Empresa sem e-mail cadastrado. Informe para abrir.'}
+                </small>
+              )}
+            </label>
+            {n > 1 && (
+              <button type="button" className="botao botao-discreto botao-pequeno" onClick={() => aoDispensar(grupo.cobrancas)}>
+                Dispensar {ehObra ? 'todos desta obra' : 'tudo deste fornecedor'}
+              </button>
+            )}
+          </div>
+
+          <ul className="tarefas">
+            {grupo.cobrancas.map((c) => {
+              const link = linkOutlook(destino, c.assunto, c.corpo);
+              return (
+                <li key={c.chave} className="tarefa tarefa-cobranca">
+                  <span className="tarefa-texto">
+                    <Farol cor={c.urgente ? 'vermelho' : 'amarelo'} />
+                    <span>
+                      <strong>{ehObra ? `Medição: ${c.resumo}` : rotuloTipo[c.tipo]}</strong>
+                      {!ehObra && c.resumo}
+                      <span className="cobranca-assunto-linha">Assunto: {c.assunto}</span>
+                    </span>
+                  </span>
+                  <span className="linha-botoes">
+                    {semEmail ? (
+                      <button type="button" className="botao botao-pequeno" disabled>Abrir no Outlook</button>
+                    ) : (
+                      <a className="botao botao-pequeno" href={link} onClick={() => aoAbrir(c)}>
+                        Abrir no Outlook
+                      </a>
+                    )}
+                    <button type="button" className="botao botao-secundario botao-pequeno" onClick={() => aoCopiar(c)}>
+                      Copiar texto
+                    </button>
+                    <button type="button" className="botao botao-discreto botao-pequeno" onClick={() => aoDispensar([c])}>
+                      Dispensar
+                    </button>
+                  </span>
+                  <details className="cobranca-ver">
+                    <summary>Ver o texto</summary>
+                    <pre className="cobranca-texto">{c.corpo}</pre>
+                    {link.length > LIMITE_LINK && <small className="dica">Texto longo: se o Outlook abrir o e-mail cortado, use "Copiar texto" e cole.</small>}
+                  </details>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </li>
   );
 }
 

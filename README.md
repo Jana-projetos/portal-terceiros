@@ -140,6 +140,8 @@ Em **Cobranças** (só administrativo), o portal monta os e-mails no calendário
 - **Documentos dos liberados:** quando entram em 30 dias, em 15 dias e quando vencem.
 - **Integração, toda segunda-feira:** colaboradores ainda não liberados com documento obrigatório faltando ou devolvido, parado há 3 dias úteis ou mais.
 
+A tela mostra uma linha por fornecedor, com selos de Medição, Documentos e Integração (vermelho para pagamento retido ou documento já vencido). Clicando, aparecem os e-mails daquele fornecedor, com o destinatário uma vez só e os botões de cada envio. Os avisos de retenção para a engenharia ficam numa lista à parte, uma linha por obra.
+
 Todos os e-mails dizem que documentos e correções só valem pelo portal. A assinatura (setor, e-mail e telefone) é editada na própria tela de Cobranças.
 
 Quando há e-mails prontos, aparece um aviso no topo do portal e um contador no menu. Cada e-mail abre no Outlook do computador já preenchido; a pessoa confere e clica em enviar. O que foi aberto ou dispensado fica registrado e não volta. O destinatário da engenharia de cada obra é informado uma vez e fica guardado.

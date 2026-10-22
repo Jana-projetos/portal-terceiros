@@ -40,6 +40,7 @@ export type Cobranca = {
   registros: Registro[];
   medicoes: string[];
   obraId: string | null;
+  urgente?: boolean; // pagamento retido ou documento já vencido
 };
 
 export type Assinatura = { setor: string; contato: string };
@@ -475,6 +476,7 @@ function retencoesFornecedor(base: Base, competencia: string, nome: string, hoje
     lista.push({
       chave: `retencao-fornecedor|${referencia}`,
       tipo: 'cobranca_medicao',
+      urgente: true,
       titulo: l[0].empresa,
       resumo: `${l.length} ${l.length === 1 ? 'obra' : 'obras'} com pagamento retido`,
       para: emailDaEmpresa(empresaPor.get(empresaId)),
@@ -532,6 +534,7 @@ function retencoesObra(base: Base, competencia: string, nome: string, hoje: stri
     lista.push({
       chave: `retencao-obra|${referencia}`,
       tipo: 'retencao_obra',
+      urgente: true,
       titulo: nomeDaObra,
       resumo: `${reter.length} ${reter.length === 1 ? 'empresa a reter' : 'empresas a reter'}${aguardando.length ? `, ${aguardando.length} com data combinada` : ''}`,
       para: obraPor.get(obraId)?.emails_engenharia ?? '',
@@ -614,8 +617,9 @@ function vencimentos(base: Base, nome: string): Cobranca[] {
     lista.push({
       chave: `documentos|${empresaId}|${l.map((d) => d.chave).sort().join(',')}`,
       tipo: 'vencimento_documento',
+      urgente: vencidos.length > 0,
       titulo: e?.razao_social ?? '',
-      resumo: [vencidos.length ? `${vencidos.length} vencidos` : '', em15.length ? `${em15.length} em 15 dias` : '', em30.length ? `${em30.length} em 30 dias` : ''].filter(Boolean).join(', '),
+      resumo: [vencidos.length ? `${vencidos.length} ${vencidos.length === 1 ? 'vencido' : 'vencidos'}` : '', em15.length ? `${em15.length} em 15 dias` : '', em30.length ? `${em30.length} em 30 dias` : ''].filter(Boolean).join(', '),
       para: emailDaEmpresa(e),
       assunto,
       corpo: [
