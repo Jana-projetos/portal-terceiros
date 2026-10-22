@@ -2303,3 +2303,14 @@ button.celula:hover {
   font-weight: 600;
   font-size: 0.9rem;
 }
+
+.filtros-cobrancas {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.filtros-cobrancas .campo-busca {
+  flex: 1 1 240px;
+  max-width: 320px;
+}

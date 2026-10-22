@@ -57,8 +57,23 @@ export function Cobrancas() {
 
   // Uma linha por fornecedor (medição, documentos e integração juntos) e uma por obra (aviso de retenção).
   const grupos = useMemo(() => agrupar(abertas), [abertas]);
-  const fornecedores = grupos.filter((g) => g.tipo === 'fornecedor');
-  const obras = grupos.filter((g) => g.tipo === 'obra');
+
+  // Filtros: por tipo (contagem de linhas em cada botão) e busca pelo nome do fornecedor ou da obra.
+  const [filtro, setFiltro] = useState<Filtro>('todos');
+  const [busca, setBusca] = useState('');
+  const porFiltro = useMemo(() => {
+    const m = new Map<Filtro, Grupo[]>();
+    for (const f of FILTROS) {
+      const doTipo = f.tipos ? abertas.filter((c) => f.tipos!.includes(c.tipo)) : abertas;
+      const gs = f.tipos ? agrupar(doTipo) : grupos;
+      m.set(f.id, f.id === 'urgentes' ? gs.filter((g) => g.urgente) : gs);
+    }
+    return m;
+  }, [abertas, grupos]);
+  const termo = semAcento(busca.trim());
+  const visiveis = (porFiltro.get(filtro) ?? []).filter((g) => !termo || semAcento(g.titulo).includes(termo));
+  const fornecedores = visiveis.filter((g) => g.tipo === 'fornecedor');
+  const obras = visiveis.filter((g) => g.tipo === 'obra');
   const [aberta, setAberta] = useState<string | null>(null);
 
   const linha = (g: Grupo) => (
@@ -134,6 +149,32 @@ export function Cobrancas() {
             </details>
           </div>
 
+          {abertas.length > 0 && (
+            <>
+              <div className="filtros filtros-cobrancas">
+                <div className="chips" role="group" aria-label="Filtrar cobranças">
+                  {FILTROS.map((f) => (
+                    <button key={f.id} type="button" className="chip" aria-pressed={filtro === f.id} onClick={() => setFiltro(f.id)}>
+                      {f.rotulo} <span className="chip-numero">{porFiltro.get(f.id)?.length ?? 0}</span>
+                    </button>
+                  ))}
+                </div>
+                <label className="campo campo-compacto campo-busca">
+                  <span className="sr">Buscar</span>
+                  <input type="search" placeholder="Buscar fornecedor ou obra" value={busca} onChange={(e) => setBusca(e.target.value)} />
+                </label>
+              </div>
+              {visiveis.length === 0 && (
+                <p className="vazio">
+                  Nenhuma cobrança com este filtro.{' '}
+                  <button type="button" className="botao botao-discreto botao-pequeno" onClick={() => { setFiltro('todos'); setBusca(''); }}>
+                    Ver todas
+                  </button>
+                </p>
+              )}
+            </>
+          )}
+
           {fornecedores.length > 0 && (
             <section className="bloco">
               <h2 className="bloco-titulo">
@@ -161,6 +202,22 @@ export function Cobrancas() {
     </Pagina>
   );
 }
+
+// ---------------------------------------------------------------- Filtros
+
+type Filtro = 'todos' | 'urgentes' | 'medicao' | 'documentos' | 'integracao' | 'obras';
+
+// Com tipos, a linha do fornecedor mostra só os e-mails daquele tipo (e "Dispensar tudo" vale só para eles).
+const FILTROS: { id: Filtro; rotulo: string; tipos?: TipoCobranca[] }[] = [
+  { id: 'todos', rotulo: 'Todos' },
+  { id: 'urgentes', rotulo: 'Urgentes' },
+  { id: 'medicao', rotulo: 'Medição', tipos: ['lembrete_medicao', 'notificacao_medicao', 'cobranca_medicao'] },
+  { id: 'documentos', rotulo: 'Documentos', tipos: ['vencimento_documento'] },
+  { id: 'integracao', rotulo: 'Integração', tipos: ['integracao_documentos'] },
+  { id: 'obras', rotulo: 'Avisos às obras', tipos: ['retencao_obra'] },
+];
+
+const semAcento = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 // ---------------------------------------------------------------- Agrupamento
 
