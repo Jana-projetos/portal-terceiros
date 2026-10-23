@@ -150,6 +150,14 @@ O botão usa o programa de e-mail padrão do Windows. Para ser o Outlook: **Conf
 
 O envio automático (sem abrir o Outlook) depende de autorização do administrador do Microsoft 365 da Emais; o registro das cobranças já está pronto para isso.
 
+## Aceite de tratamento de dados (LGPD)
+
+Todo envio de documento pelo fornecedor pede o aceite abaixo, e o botão de enviar só libera com ele marcado: documentos dos colaboradores, documentos da empresa e arquivos da medição (marcar "não se aplica" não pede, porque não envia dado pessoal).
+
+> Declaro que autorizo a Emais Urbanismo a tratar os dados pessoais dos colaboradores da minha empresa, enviados neste sistema, para fins de integração em obras, liberação de medição e comprovação de regularidade documental, fiscal e trabalhista, nos termos da LGPD (Lei nº 13.709/2018). Declaro ainda que estou autorizado a compartilhar esses dados e que informei os titulares sobre o tratamento.
+
+O banco recusa o envio sem o aceite e guarda a data e hora de cada um (`aceite_lgpd_em` nos documentos e nos arquivos da medição). O texto é este desde 23/10/2026; antes, o aceite dos documentos tinha outro texto e a medição não pedia aceite. O texto fica em `site/src/componentes/TermoLgpd.tsx`.
+
 ## Cadastro do colaborador
 
 Nome, CPF, função, data de admissão (registro) e data de nascimento. As duas datas foram carregadas das colunas DATA DE REGISTRO e DATA DE NASCIMENTO da planilha `CONTROLE_DE_INTEGRAÇÃO` (a carga fica fora do repositório, porque tem dados pessoais). No cadastro de um colaborador novo o fornecedor é obrigado a informar as duas; nos antigos sem data, o detalhe do colaborador pede para completar. O administrativo também corrige em **Editar cadastro**. O banco recusa nascimento com menos de 14 anos, admissão antes do nascimento ou mais de 90 dias à frente. O Painel da obra (engenharia) não mostra essas datas.

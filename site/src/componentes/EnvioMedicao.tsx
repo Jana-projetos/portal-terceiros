@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Dialogo } from './Dialogo';
+import { TermoLgpd } from './TermoLgpd';
 import { mensagemDeErro } from '../lib/supabase';
 import { tamanhoArquivo } from '../lib/formato';
 import { enviarItemMedicao, marcarNaoSeAplica, mesPorExtenso, problemaNoArquivo, type ItemMedicao, type Medicao, type TipoMedicao } from '../lib/medicao';
@@ -14,6 +15,7 @@ export function EnvioMedicao({ pedido, aoFechar, aoEnviar }: { pedido: PedidoMed
   const [enviando, setEnviando] = useState(false);
   const [progresso, setProgresso] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [aceite, setAceite] = useState(false);
   const entrada = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -21,13 +23,15 @@ export function EnvioMedicao({ pedido, aoFechar, aoEnviar }: { pedido: PedidoMed
     setJustificativa('');
     setErro(null);
     setProgresso(null);
+    setAceite(false);
   }, [pedido]);
 
   if (!pedido) return <Dialogo aberto={false} titulo="" aoFechar={aoFechar}>{null}</Dialogo>;
   const { medicao, item, tipo, modo } = pedido;
 
   const problemas = arquivos.map(problemaNoArquivo).filter((p): p is string => !!p);
-  const pronto = modo === 'nao_aplica' ? justificativa.trim().length >= 3 : arquivos.length > 0 && problemas.length === 0;
+  // O aceite de LGPD vale para envio de arquivo; "não se aplica" não envia dado pessoal.
+  const pronto = modo === 'nao_aplica' ? justificativa.trim().length >= 3 : arquivos.length > 0 && problemas.length === 0 && aceite;
 
   function adicionar(lista: FileList | null) {
     if (!lista) return;
@@ -46,7 +50,7 @@ export function EnvioMedicao({ pedido, aoFechar, aoEnviar }: { pedido: PedidoMed
         await marcarNaoSeAplica(medicao.id, tipo.codigo, justificativa.trim());
         aoEnviar(`${tipo.nome}: marcado como não se aplica.`);
       } else {
-        await enviarItemMedicao({ medicao, item, arquivos, aoProgredir: (f, t) => setProgresso(`Enviando arquivo ${f} de ${t}`) });
+        await enviarItemMedicao({ medicao, item, arquivos, aceiteLgpd: aceite, aoProgredir: (f, t) => setProgresso(`Enviando arquivo ${f} de ${t}`) });
         aoEnviar(`${tipo.nome} enviado.`);
       }
     } catch (er) {
@@ -123,6 +127,8 @@ export function EnvioMedicao({ pedido, aoFechar, aoEnviar }: { pedido: PedidoMed
             )}
           </div>
         )}
+
+        {modo === 'arquivo' && <TermoLgpd marcado={aceite} aoMudar={setAceite} />}
 
         {erro && <p className="aviso aviso-erro" role="alert">{erro}</p>}
         {progresso && <p className="aviso aviso-ok" role="status">{progresso}</p>}

@@ -272,8 +272,10 @@ export async function enviarItemMedicao(dados: {
   medicao: Pick<Medicao, 'id' | 'empresa_id'>;
   item: Pick<ItemMedicao, 'tipo_codigo' | 'versao'>;
   arquivos: File[];
+  aceiteLgpd: boolean;
   aoProgredir?: (feitos: number, total: number) => void;
 }) {
+  if (!dados.aceiteLgpd) throw new Error('É preciso aceitar o termo de LGPD para enviar');
   const versao = dados.item.versao + 1;
   const pasta = `${dados.medicao.empresa_id}/medicao/${dados.medicao.id}/${dados.item.tipo_codigo}/${versao}-`;
   const enviados: { caminho: string; nome: string; tamanho: number; tipo: string }[] = [];
@@ -292,6 +294,7 @@ export async function enviarItemMedicao(dados: {
     p_arquivos: enviados,
     p_nao_aplica: false,
     p_justificativa: null,
+    p_aceite_lgpd: true,
   });
   if (error) throw error;
 }

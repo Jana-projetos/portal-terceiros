@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { TermoLgpd } from './TermoLgpd';
 import { Dialogo } from './Dialogo';
 import { mensagemDeErro } from '../lib/supabase';
 import { data, diasAte, hojeIso, somarDias, tamanhoArquivo } from '../lib/formato';
@@ -174,14 +175,11 @@ export function EnvioDocumento({ pedido, aoFechar, aoEnviar }: { pedido: PedidoD
           </>
         )}
 
-        <label className="opcao opcao-termo">
-          <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} />
-          <span>
-            Declaro que {pedido.colaborador ? 'o colaborador está ciente do envio destes documentos' : 'estou autorizado a enviar estes documentos'} e que eles serão
-            usados pelo Grupo Emais só para a liberação de acesso às obras e para cumprir obrigações legais e trabalhistas
-            {t.codigo === 'aso' ? '. O ASO contém dado de saúde e fica restrito ao administrativo da Emais' : ''}.
-          </span>
-        </label>
+        <TermoLgpd
+          marcado={aceite}
+          aoMudar={setAceite}
+          observacao={t.codigo === 'aso' ? 'O ASO contém dado de saúde e fica restrito ao administrativo da Emais.' : undefined}
+        />
 
         {erro && <p className="aviso aviso-erro" role="alert">{erro}</p>}
         {progresso && <p className="aviso aviso-ok" role="status">{progresso}</p>}

@@ -2335,3 +2335,13 @@ button.celula:hover {
   border: 1px solid #e3e9e8;
   border-radius: 8px;
 }
+
+.termo-lgpd {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.termo-lgpd .opcao-termo {
+  line-height: 1.5;
+}
